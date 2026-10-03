@@ -1,5 +1,12 @@
 package com.example.kiwi_backend.member.api;
 
+import com.example.kiwi_backend.common.response.ApiResponse;
+import com.example.kiwi_backend.common.security.AuthUser;
+import com.example.kiwi_backend.member.api.dto.InstagramIdRequest;
+import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
+import com.example.kiwi_backend.member.api.dto.PasswordChangeRequest;
+import com.example.kiwi_backend.member.api.dto.PhoneNumberRequest;
+import com.example.kiwi_backend.member.application.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
