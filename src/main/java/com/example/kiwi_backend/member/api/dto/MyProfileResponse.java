@@ -1,5 +1,7 @@
 package com.example.kiwi_backend.member.api.dto;
 
+import com.example.kiwi_backend.member.domain.entity.Profile;
+
 import java.util.List;
 
 /** 본인 프로필 카드 (수정 화면용) */

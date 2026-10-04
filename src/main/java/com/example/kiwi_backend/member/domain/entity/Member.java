@@ -1,5 +1,6 @@
 package com.example.kiwi_backend.member.domain.entity;
 
+import com.example.kiwi_backend.common.crypto.EncryptedStringConverter;
 import com.example.kiwi_backend.member.domain.enumerated.ContactType;
 import com.example.kiwi_backend.member.domain.enumerated.Gender;
 import com.example.kiwi_backend.member.domain.enumerated.MemberStatus;

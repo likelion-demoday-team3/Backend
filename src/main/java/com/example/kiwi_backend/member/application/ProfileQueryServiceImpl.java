@@ -19,14 +19,14 @@ public class ProfileQueryServiceImpl implements ProfileQueryService {
     private final ProfileRepository profileRepository;
 
     @Override
-    public Profile getCard(Long memberId) {
+    public PartnerProfileCard getCard(Long memberId) {
         Profile profile = profileRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new NotFoundException("프로필이 없습니다"));
         return toCard(memberId, profile);
     }
 
     @Override
-    public Map<Long, Profile> getCards(Collection<Long> memberIds) {
+    public Map<Long, PartnerProfileCard> getCards(Collection<Long> memberIds) {
         if (memberIds == null || memberIds.isEmpty()) {
             return Map.of();
         }
@@ -37,8 +37,8 @@ public class ProfileQueryServiceImpl implements ProfileQueryService {
                 ));
     }
 
-    private Profile toCard(Long memberId, Profile profile) {
-        return new Profile(
+    private PartnerProfileCard toCard(Long memberId, Profile profile) {
+        return new PartnerProfileCard(
                 memberId,
                 profile.getUniversity(),
                 profile.getIdealType(),

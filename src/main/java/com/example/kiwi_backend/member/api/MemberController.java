@@ -9,6 +9,7 @@ import com.example.kiwi_backend.member.api.dto.PhoneNumberRequest;
 import com.example.kiwi_backend.member.application.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /** 본인 계정 API. 모든 요청은 로그인한 본인에 대해서만 동작한다 */
