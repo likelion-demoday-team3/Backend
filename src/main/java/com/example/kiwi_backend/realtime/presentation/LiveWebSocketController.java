@@ -22,13 +22,14 @@ public class LiveWebSocketController {
     @MessageMapping("/live/join")
     public void join(@Valid LiveJoinRequest request, @AuthenticationPrincipal AuthUser authUser) {
         Long memberId = requireMemberId(authUser);
+//        보낸 사람을 로그인 정보에서 가져온다. (프론트가 정보를 보내지 X)
 
         messagingTemplate.convertAndSendToUser(
                 memberId.toString(),
                 "/queue/live/joined",
                 new LiveJoinResponse(request.sessionId(), memberId, "JOINED")
         );
-//        입장 확인 메시지
+//        입장 확인 메시지를 보낸다
     }
 
     @MessageMapping("/live/signal")
