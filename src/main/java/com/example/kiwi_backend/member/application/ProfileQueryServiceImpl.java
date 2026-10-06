@@ -5,6 +5,7 @@ import com.example.kiwi_backend.member.domain.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.kiwi_backend.common.exception.NotFoundException;
 
 import java.util.Collection;
 import java.util.Map;

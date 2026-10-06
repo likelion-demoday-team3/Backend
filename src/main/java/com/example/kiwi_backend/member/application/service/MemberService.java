@@ -1,6 +1,7 @@
-package com.example.kiwi_backend.member.application;
+package com.example.kiwi_backend.member.application.service;
 
 import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
+import com.example.kiwi_backend.common.exception.NotFoundException;
 import com.example.kiwi_backend.member.domain.entity.Member;
 import com.example.kiwi_backend.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
