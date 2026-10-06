@@ -6,7 +6,7 @@ import com.example.kiwi_backend.member.api.dto.InstagramIdRequest;
 import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
 import com.example.kiwi_backend.member.api.dto.PasswordChangeRequest;
 import com.example.kiwi_backend.member.api.dto.PhoneNumberRequest;
-import com.example.kiwi_backend.member.application.MemberService;
+import com.example.kiwi_backend.member.application.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

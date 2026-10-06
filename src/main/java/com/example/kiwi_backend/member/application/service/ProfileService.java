@@ -1,7 +1,9 @@
-package com.example.kiwi_backend.member.application;
+package com.example.kiwi_backend.member.application.service;
 
 import com.example.kiwi_backend.member.api.dto.MyProfileResponse;
 import com.example.kiwi_backend.member.api.dto.ProfileUpdateRequest;
+import com.example.kiwi_backend.common.exception.NotFoundException;
+import com.example.kiwi_backend.member.application.ProfileTextFilter;
 import com.example.kiwi_backend.member.domain.entity.Profile;
 import com.example.kiwi_backend.member.domain.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
