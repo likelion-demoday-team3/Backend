@@ -38,9 +38,8 @@ public class LiveRoundControlController {
     @PostMapping("/advance")
     public ApiResponse<LiveRoundAdvanceResponse> advanceRound(@PathVariable Long sessionId,
                                                               @PathVariable int roundNumber) {
-        Instant now = Instant.now();
         return ApiResponse.ok(LiveRoundAdvanceResponse.from(
-                liveRoundStateService.completeAndStartNextRound(sessionId, roundNumber, now, now)
+                liveRoundStateService.completeAndPrepareNextRound(sessionId, roundNumber, Instant.now())
         ));
     }
 }

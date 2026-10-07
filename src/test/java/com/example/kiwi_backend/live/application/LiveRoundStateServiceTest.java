@@ -63,31 +63,32 @@ class LiveRoundStateServiceTest {
     }
 
     @Test
-    void completeAndStartNextRoundCompletesCurrentAndStartsNextRound() {
+    void completeAndPrepareNextRoundCompletesCurrentAndReturnsBreakWhenNextRoundExists() {
         LiveRound currentRound = LiveRound.create(10L, 1);
         currentRound.start(Instant.parse("2026-10-06T09:00:00Z"));
         LiveRound nextRound = LiveRound.create(10L, 2);
 
         Instant endedAt = Instant.parse("2026-10-06T09:03:00Z");
-        Instant nextStartedAt = Instant.parse("2026-10-06T09:03:10Z");
 
         when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
                 .thenReturn(Optional.of(currentRound));
         when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 2))
                 .thenReturn(Optional.of(nextRound));
 
-        LiveRoundAdvanceResult result = service.completeAndStartNextRound(10L, 1, endedAt, nextStartedAt);
+        LiveRoundAdvanceResult result = service.completeAndPrepareNextRound(10L, 1, endedAt);
 
         assertThat(currentRound.getStatus()).isEqualTo(LiveRoundStatus.COMPLETED);
-        assertThat(nextRound.getStatus()).isEqualTo(LiveRoundStatus.IN_PROGRESS);
-        assertThat(result.nextRoundStarted()).isTrue();
+        assertThat(nextRound.getStatus()).isEqualTo(LiveRoundStatus.PENDING);
+        assertThat(result.nextRoundExists()).isTrue();
         assertThat(result.nextRoundNumber()).isEqualTo(2);
+        assertThat(result.phase()).isEqualTo(LiveRoundPhase.BREAK);
+        assertThat(result.breakSeconds()).isEqualTo(60);
 
-        verify(liveRoundBroadcastService).broadcastRoundAssignments(10L, 2);
+        verify(liveRoundBroadcastService, never()).broadcastRoundAssignments(10L, 2);
     }
 
     @Test
-    void completeAndStartNextRoundReturnsFalseWhenNextRoundDoesNotExist() {
+    void completeAndPrepareNextRoundReturnsFinishedWhenNextRoundDoesNotExist() {
         LiveRound currentRound = LiveRound.create(10L, 1);
         currentRound.start(Instant.parse("2026-10-06T09:00:00Z"));
 
@@ -96,16 +97,17 @@ class LiveRoundStateServiceTest {
         when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 2))
                 .thenReturn(Optional.empty());
 
-        LiveRoundAdvanceResult result = service.completeAndStartNextRound(
+        LiveRoundAdvanceResult result = service.completeAndPrepareNextRound(
                 10L,
                 1,
-                Instant.parse("2026-10-06T09:03:00Z"),
-                Instant.parse("2026-10-06T09:03:10Z")
+                Instant.parse("2026-10-06T09:03:00Z")
         );
 
         assertThat(currentRound.getStatus()).isEqualTo(LiveRoundStatus.COMPLETED);
-        assertThat(result.nextRoundStarted()).isFalse();
+        assertThat(result.nextRoundExists()).isFalse();
         assertThat(result.nextRoundNumber()).isNull();
+        assertThat(result.phase()).isEqualTo(LiveRoundPhase.FINISHED);
+        assertThat(result.breakSeconds()).isZero();
 
         verify(liveRoundBroadcastService, never()).broadcastRoundAssignments(10L, 2);
     }
