@@ -22,6 +22,7 @@ public class LiveRoundStateService {
         LiveRound round = findRound(sessionId, roundNumber);
         round.start(startedAt);
         liveRoundBroadcastService.broadcastRoundAssignments(sessionId, roundNumber);
+        liveRoundBroadcastService.broadcastIdle(sessionId, roundNumber, DEFAULT_BREAK_SECONDS);
 
         return new LiveRoundStateResult(sessionId, roundNumber, round.getStatus(), true);
     }

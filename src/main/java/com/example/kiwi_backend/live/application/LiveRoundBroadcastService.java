@@ -2,8 +2,10 @@ package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
+import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
 import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
+import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -22,6 +24,7 @@ public class LiveRoundBroadcastService {
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoomRepository liveRoomRepository;
+    private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     public LiveRoundBroadcastResult broadcastRoundAssignments(Long sessionId, int roundNumber) {
@@ -56,11 +59,7 @@ public class LiveRoundBroadcastService {
         return new LiveRoundBroadcastResult(sessionId, roundNumber, rooms.size(), recipientCount);
     }
 
-    public void broadcastIdle(Long sessionId, int roundNumber, List<Long> idleMemberIds, int breakSeconds) {
-        if (idleMemberIds == null || idleMemberIds.isEmpty()) {
-            return;
-        }
-
+    public void broadcastIdle(Long sessionId, int roundNumber, int breakSeconds) {
         LiveRound round = liveRoundRepository.findBySessionIdAndRoundNumber(sessionId, roundNumber)
                 .orElseThrow(() -> new IllegalArgumentException("round not found"));
         if (round.getId() == null) {
@@ -70,7 +69,10 @@ public class LiveRoundBroadcastService {
             throw new IllegalStateException("in-progress round만 대기 알림을 보낼 수 있습니다");
         }
 
-        for (Long memberId : idleMemberIds) {
+        List<LiveRoundIdleParticipant> idleParticipants =
+                liveRoundIdleParticipantRepository.findAllByRoundIdOrderByMemberIdAsc(round.getId());
+        for (LiveRoundIdleParticipant idleParticipant : idleParticipants) {
+            Long memberId = idleParticipant.getMemberId();
             if (memberId == null) {
                 throw new IllegalArgumentException("idle memberId must not be null");
             }
