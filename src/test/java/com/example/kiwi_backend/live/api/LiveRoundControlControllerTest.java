@@ -4,6 +4,7 @@ import com.example.kiwi_backend.common.response.ApiResponse;
 import com.example.kiwi_backend.live.api.dto.LiveRoundAdvanceResponse;
 import com.example.kiwi_backend.live.api.dto.LiveRoundStateResponse;
 import com.example.kiwi_backend.live.application.LiveRoundAdvanceResult;
+import com.example.kiwi_backend.live.application.LiveRoundPhase;
 import com.example.kiwi_backend.live.application.LiveRoundStateResult;
 import com.example.kiwi_backend.live.application.LiveRoundStateService;
 import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
@@ -51,16 +52,18 @@ class LiveRoundControlControllerTest {
 
     @Test
     void advanceRoundCallsStateService() {
-        when(liveRoundStateService.completeAndStartNextRound(eq(10L), eq(1), any(Instant.class), any(Instant.class)))
-                .thenReturn(new LiveRoundAdvanceResult(10L, 1, true, 2));
+        when(liveRoundStateService.completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class)))
+                .thenReturn(new LiveRoundAdvanceResult(10L, 1, true, 2, LiveRoundPhase.BREAK, 60));
 
         ApiResponse<LiveRoundAdvanceResponse> response = controller.advanceRound(10L, 1);
 
         assertThat(response.success()).isTrue();
         assertThat(response.data().completedRoundNumber()).isEqualTo(1);
-        assertThat(response.data().nextRoundStarted()).isTrue();
+        assertThat(response.data().nextRoundExists()).isTrue();
         assertThat(response.data().nextRoundNumber()).isEqualTo(2);
+        assertThat(response.data().phase()).isEqualTo(LiveRoundPhase.BREAK);
+        assertThat(response.data().breakSeconds()).isEqualTo(60);
         verify(liveRoundStateService)
-                .completeAndStartNextRound(eq(10L), eq(1), any(Instant.class), any(Instant.class));
+                .completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class));
     }
 }

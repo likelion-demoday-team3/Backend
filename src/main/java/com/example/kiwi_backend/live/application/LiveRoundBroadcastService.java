@@ -18,6 +18,7 @@ import java.util.List;
 public class LiveRoundBroadcastService {
 
     public static final String ROUND_ASSIGNED_DESTINATION = "/queue/live/round-assigned";
+    public static final String ROUND_IDLE_DESTINATION = "/queue/live/round-idle";
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoomRepository liveRoomRepository;
@@ -39,7 +40,6 @@ public class LiveRoundBroadcastService {
         if (round.getStatus() != LiveRoundStatus.IN_PROGRESS) {
             throw new IllegalStateException("in-progress round만 배정 알림을 보낼 수 있습니다");
         }
-//        아직 시작 전이거나 이미 끝난 라운드는 상대 배정 메시지를 보내지 않는다.
 
         List<LiveRoom> rooms = liveRoomRepository.findAllByRoundIdOrderByTableNoAsc(round.getId());
         if (rooms.isEmpty()) {
@@ -54,6 +54,38 @@ public class LiveRoundBroadcastService {
         }
 
         return new LiveRoundBroadcastResult(sessionId, roundNumber, rooms.size(), recipientCount);
+    }
+
+    public void broadcastIdle(Long sessionId, int roundNumber, List<Long> idleMemberIds, int breakSeconds) {
+        if (idleMemberIds == null || idleMemberIds.isEmpty()) {
+            return;
+        }
+
+        LiveRound round = liveRoundRepository.findBySessionIdAndRoundNumber(sessionId, roundNumber)
+                .orElseThrow(() -> new IllegalArgumentException("round not found"));
+        if (round.getId() == null) {
+            throw new IllegalStateException("persisted round is required");
+        }
+        if (round.getStatus() != LiveRoundStatus.IN_PROGRESS) {
+            throw new IllegalStateException("in-progress round만 대기 알림을 보낼 수 있습니다");
+        }
+
+        for (Long memberId : idleMemberIds) {
+            if (memberId == null) {
+                throw new IllegalArgumentException("idle memberId must not be null");
+            }
+            messagingTemplate.convertAndSendToUser(
+                    memberId.toString(),
+                    ROUND_IDLE_DESTINATION,
+                    new LiveRoundIdleMessage(
+                            round.getSessionId(),
+                            round.getId(),
+                            round.getRoundNumber(),
+                            memberId,
+                            breakSeconds
+                    )
+            );
+        }
     }
 
     private void sendAssignment(LiveRound round, LiveRoom room, Long memberId, Long partnerMemberId) {

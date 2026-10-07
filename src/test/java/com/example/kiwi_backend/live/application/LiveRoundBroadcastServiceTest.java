@@ -99,6 +99,48 @@ class LiveRoundBroadcastServiceTest {
         verifyNoInteractions(liveRoomRepository, messagingTemplate);
     }
 
+    @Test
+    void broadcastIdleSendsMessageToIdleParticipants() {
+        LiveRound round = startedRound(10L, 1L, 1);
+
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
+                .thenReturn(Optional.of(round));
+
+        service.broadcastIdle(10L, 1, List.of(301L, 302L), 60);
+
+        ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<LiveRoundIdleMessage> messageCaptor =
+                ArgumentCaptor.forClass(LiveRoundIdleMessage.class);
+
+        verify(messagingTemplate, org.mockito.Mockito.times(2)).convertAndSendToUser(
+                userCaptor.capture(),
+                destinationCaptor.capture(),
+                messageCaptor.capture()
+        );
+
+        assertThat(userCaptor.getAllValues()).containsExactly("301", "302");
+        assertThat(destinationCaptor.getAllValues())
+                .containsOnly(LiveRoundBroadcastService.ROUND_IDLE_DESTINATION);
+        assertThat(messageCaptor.getAllValues())
+                .extracting(LiveRoundIdleMessage::breakSeconds)
+                .containsExactly(60, 60);
+    }
+
+    @Test
+    void broadcastIdleRejectsPendingRound() {
+        LiveRound round = persistedRound(10L, 1L, 1);
+
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
+                .thenReturn(Optional.of(round));
+
+        assertThatThrownBy(() -> service.broadcastIdle(10L, 1, List.of(301L), 60))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("in-progress round만 대기 알림을 보낼 수 있습니다");
+
+        verifyNoInteractions(messagingTemplate);
+    }
+
     private LiveRound persistedRound(Long sessionId, Long roundId, int roundNumber) {
         LiveRound round = LiveRound.create(sessionId, roundNumber);
         ReflectionTestUtils.setField(round, "id", roundId);

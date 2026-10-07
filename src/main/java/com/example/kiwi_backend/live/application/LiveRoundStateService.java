@@ -12,6 +12,8 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class LiveRoundStateService {
 
+    private static final int DEFAULT_BREAK_SECONDS = 60;
+
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoundBroadcastService liveRoundBroadcastService;
 
@@ -33,21 +35,33 @@ public class LiveRoundStateService {
     }
 
     @Transactional
-    public LiveRoundAdvanceResult completeAndStartNextRound(Long sessionId,
-                                                            int currentRoundNumber,
-                                                            Instant endedAt,
-                                                            Instant nextStartedAt) {
+    public LiveRoundAdvanceResult completeAndPrepareNextRound(Long sessionId,
+                                                              int currentRoundNumber,
+                                                              Instant endedAt) {
         LiveRound currentRound = findRound(sessionId, currentRoundNumber);
         currentRound.complete(endedAt);
 
         int nextRoundNumber = currentRoundNumber + 1;
-        return liveRoundRepository.findBySessionIdAndRoundNumber(sessionId, nextRoundNumber)
-                .map(nextRound -> {
-                    nextRound.start(nextStartedAt);
-                    liveRoundBroadcastService.broadcastRoundAssignments(sessionId, nextRoundNumber);
-                    return new LiveRoundAdvanceResult(sessionId, currentRoundNumber, true, nextRoundNumber);
-                })
-                .orElseGet(() -> new LiveRoundAdvanceResult(sessionId, currentRoundNumber, false, null));
+        boolean nextRoundExists = liveRoundRepository.findBySessionIdAndRoundNumber(sessionId, nextRoundNumber)
+                .isPresent();
+        if (nextRoundExists) {
+            return new LiveRoundAdvanceResult(
+                    sessionId,
+                    currentRoundNumber,
+                    true,
+                    nextRoundNumber,
+                    LiveRoundPhase.BREAK,
+                    DEFAULT_BREAK_SECONDS
+            );
+        }
+        return new LiveRoundAdvanceResult(
+                sessionId,
+                currentRoundNumber,
+                false,
+                null,
+                LiveRoundPhase.FINISHED,
+                0
+        );
     }
 
     private LiveRound findRound(Long sessionId, int roundNumber) {
