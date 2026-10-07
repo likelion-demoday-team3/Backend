@@ -1,8 +1,9 @@
 package com.example.kiwi_backend.member.domain.entity;
 
 import com.example.kiwi_backend.common.crypto.EncryptedStringConverter;
-import com.example.kiwi_backend.member.domain.enumerated.ContactType;
-import com.example.kiwi_backend.member.domain.enumerated.Gender;
+import com.example.kiwi_backend.common.entity.BaseTimeEntity;
+import com.example.kiwi_backend.contract.dto.ContactType;
+import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.member.domain.enumerated.MemberStatus;
 import com.example.kiwi_backend.member.domain.enumerated.Role;
 import jakarta.persistence.*;
@@ -20,7 +21,7 @@ import java.util.regex.Pattern;
 @Table(name="member")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Member {
+public class Member extends BaseTimeEntity {
 
     static final int MIN_AGE = 19; //만 19세, 한국나이 생일이 지난 20세
     static final int MAX_AGE = 27; //만 27세, 한국나이 생일이 지난 28세

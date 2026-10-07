@@ -29,7 +29,7 @@ public class ProfileInterest {
     private Profile profile;
 
     /** 카드에 보여줄 관심사 태그 */
-    @Column(nullable = false, length = 20, updatable = false)
+    @Column(nullable = false, length = 40, updatable = false)
     private String interest;
 
     /** 등록 시각 */

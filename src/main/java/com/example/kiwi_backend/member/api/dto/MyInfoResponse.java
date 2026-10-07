@@ -1,7 +1,7 @@
 package com.example.kiwi_backend.member.api.dto;
 
 import com.example.kiwi_backend.member.domain.entity.Member;
-import com.example.kiwi_backend.member.domain.enumerated.Gender;
+import com.example.kiwi_backend.contract.dto.Gender;
 
 import java.time.LocalDate;
 import java.util.UUID;

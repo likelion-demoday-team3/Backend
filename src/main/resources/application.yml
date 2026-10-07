@@ -1,0 +1,21 @@
+# application.yml — 어디서든 똑같은 것
+spring:
+  application:
+    name: kiwi_backend
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+app:
+  crypto:
+    key: ${APP_CRYPTO_KEY}
+  jwt:
+    secret: ${JWT_SECRET}
+    access-ttl: 7d
+    signup-ttl: 30m

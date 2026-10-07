@@ -62,7 +62,7 @@ public class JwtProvider {
 
     // ===== 발급 =====
 
-    /** 로그인 토큰. role은 "USER" 또는 "ADMIN" */
+    /** 로그인 토큰. role은 "MEMBER" 또는 "ADMIN" */
     public String createAccessToken(Long memberId, String role) {
         if (memberId == null || role == null) {
             throw new IllegalArgumentException("회원 id와 권한은 필수입니다");

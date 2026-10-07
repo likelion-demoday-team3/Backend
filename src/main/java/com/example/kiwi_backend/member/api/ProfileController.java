@@ -4,7 +4,7 @@ import com.example.kiwi_backend.common.response.ApiResponse;
 import com.example.kiwi_backend.common.security.AuthUser;
 import com.example.kiwi_backend.member.api.dto.MyProfileResponse;
 import com.example.kiwi_backend.member.api.dto.ProfileUpdateRequest;
-import com.example.kiwi_backend.member.application.service.ProfileService;
+import com.example.kiwi_backend.member.application.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

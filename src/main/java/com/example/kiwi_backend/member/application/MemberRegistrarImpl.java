@@ -1,5 +1,8 @@
 package com.example.kiwi_backend.member.application;
 
+import com.example.kiwi_backend.contract.command.MemberRegistrar;
+import com.example.kiwi_backend.contract.dto.RegisterMemberCommand;
+import com.example.kiwi_backend.contract.event.MemberRegisteredEvent;
 import com.example.kiwi_backend.member.domain.entity.Member;
 import com.example.kiwi_backend.member.domain.entity.Profile;
 import com.example.kiwi_backend.member.domain.repository.MemberRepository;
