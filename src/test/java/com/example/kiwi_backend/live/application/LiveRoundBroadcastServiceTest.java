@@ -2,7 +2,9 @@ package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
+import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
 import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
+import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,11 +26,14 @@ class LiveRoundBroadcastServiceTest {
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoomRepository liveRoomRepository = mock(LiveRoomRepository.class);
+    private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository =
+            mock(LiveRoundIdleParticipantRepository.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
 
     private final LiveRoundBroadcastService service = new LiveRoundBroadcastService(
             liveRoundRepository,
             liveRoomRepository,
+            liveRoundIdleParticipantRepository,
             messagingTemplate
     );
 
@@ -105,8 +110,13 @@ class LiveRoundBroadcastServiceTest {
 
         when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
                 .thenReturn(Optional.of(round));
+        when(liveRoundIdleParticipantRepository.findAllByRoundIdOrderByMemberIdAsc(1L))
+                .thenReturn(List.of(
+                        LiveRoundIdleParticipant.create(round, 301L),
+                        LiveRoundIdleParticipant.create(round, 302L)
+                ));
 
-        service.broadcastIdle(10L, 1, List.of(301L, 302L), 60);
+        service.broadcastIdle(10L, 1, 60);
 
         ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
@@ -134,7 +144,7 @@ class LiveRoundBroadcastServiceTest {
         when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
                 .thenReturn(Optional.of(round));
 
-        assertThatThrownBy(() -> service.broadcastIdle(10L, 1, List.of(301L), 60))
+        assertThatThrownBy(() -> service.broadcastIdle(10L, 1, 60))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("in-progress round만 대기 알림을 보낼 수 있습니다");
 

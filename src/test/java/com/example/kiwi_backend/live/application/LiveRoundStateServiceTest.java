@@ -26,7 +26,7 @@ class LiveRoundStateServiceTest {
     );
 
     @Test
-    void startRoundChangesStatusAndBroadcastsAssignments() {
+    void startRoundChangesStatusAndBroadcastsAssignmentsAndIdleMessages() {
         LiveRound round = LiveRound.create(10L, 1);
         Instant startedAt = Instant.parse("2026-10-06T09:00:00Z");
 
@@ -41,6 +41,7 @@ class LiveRoundStateServiceTest {
         assertThat(result.assignmentBroadcasted()).isTrue();
 
         verify(liveRoundBroadcastService).broadcastRoundAssignments(10L, 1);
+        verify(liveRoundBroadcastService).broadcastIdle(10L, 1, 60);
     }
 
     @Test
