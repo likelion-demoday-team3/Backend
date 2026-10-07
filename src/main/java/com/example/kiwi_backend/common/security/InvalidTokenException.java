@@ -25,4 +25,3 @@ public class InvalidTokenException extends RuntimeException{
         return reason;
     }
 }
-}
