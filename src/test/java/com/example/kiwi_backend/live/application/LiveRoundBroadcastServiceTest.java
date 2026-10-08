@@ -2,7 +2,9 @@ package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
+import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
 import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
+import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,11 +26,14 @@ class LiveRoundBroadcastServiceTest {
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoomRepository liveRoomRepository = mock(LiveRoomRepository.class);
+    private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository =
+            mock(LiveRoundIdleParticipantRepository.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
 
     private final LiveRoundBroadcastService service = new LiveRoundBroadcastService(
             liveRoundRepository,
             liveRoomRepository,
+            liveRoundIdleParticipantRepository,
             messagingTemplate
     );
 
@@ -97,6 +102,53 @@ class LiveRoundBroadcastServiceTest {
                 .hasMessage("in-progress round만 배정 알림을 보낼 수 있습니다");
 
         verifyNoInteractions(liveRoomRepository, messagingTemplate);
+    }
+
+    @Test
+    void broadcastIdleSendsMessageToIdleParticipants() {
+        LiveRound round = startedRound(10L, 1L, 1);
+
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
+                .thenReturn(Optional.of(round));
+        when(liveRoundIdleParticipantRepository.findAllByRoundIdOrderByMemberIdAsc(1L))
+                .thenReturn(List.of(
+                        LiveRoundIdleParticipant.create(round, 301L),
+                        LiveRoundIdleParticipant.create(round, 302L)
+                ));
+
+        service.broadcastIdle(10L, 1, 60);
+
+        ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> destinationCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<LiveRoundIdleMessage> messageCaptor =
+                ArgumentCaptor.forClass(LiveRoundIdleMessage.class);
+
+        verify(messagingTemplate, org.mockito.Mockito.times(2)).convertAndSendToUser(
+                userCaptor.capture(),
+                destinationCaptor.capture(),
+                messageCaptor.capture()
+        );
+
+        assertThat(userCaptor.getAllValues()).containsExactly("301", "302");
+        assertThat(destinationCaptor.getAllValues())
+                .containsOnly(LiveRoundBroadcastService.ROUND_IDLE_DESTINATION);
+        assertThat(messageCaptor.getAllValues())
+                .extracting(LiveRoundIdleMessage::breakSeconds)
+                .containsExactly(60, 60);
+    }
+
+    @Test
+    void broadcastIdleRejectsPendingRound() {
+        LiveRound round = persistedRound(10L, 1L, 1);
+
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1))
+                .thenReturn(Optional.of(round));
+
+        assertThatThrownBy(() -> service.broadcastIdle(10L, 1, 60))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("in-progress round만 대기 알림을 보낼 수 있습니다");
+
+        verifyNoInteractions(messagingTemplate);
     }
 
     private LiveRound persistedRound(Long sessionId, Long roundId, int roundNumber) {

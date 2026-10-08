@@ -2,7 +2,9 @@ package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
+import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
 import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
+import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class LiveScheduleService {
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoomRepository liveRoomRepository;
+    private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository;
 
     @Transactional
     public LiveScheduleResult createSchedule(Long sessionId, List<LiveRoundPlan> roundPlans) {
@@ -42,6 +45,7 @@ public class LiveScheduleService {
         validateRoundPlans(roundPlans);
 
         int roomCount = 0;
+        int idleCount = 0;
         for (LiveRoundPlan roundPlan : roundPlans) {
             LiveRound round = liveRoundRepository.save(LiveRound.create(sessionId, roundPlan.roundNumber()));
 //            저장 후 round에는 DB가 만든 id가 들어간다
@@ -57,9 +61,15 @@ public class LiveScheduleService {
             }
             liveRoomRepository.saveAll(rooms);
             roomCount += rooms.size();
+
+            List<LiveRoundIdleParticipant> idleParticipants = roundPlan.idleMemberIds().stream()
+                    .map(memberId -> LiveRoundIdleParticipant.create(round, memberId))
+                    .toList();
+            liveRoundIdleParticipantRepository.saveAll(idleParticipants);
+            idleCount += idleParticipants.size();
         }
 
-        return new LiveScheduleResult(sessionId, roundPlans.size(), roomCount);
+        return new LiveScheduleResult(sessionId, roundPlans.size(), roomCount, idleCount);
     }
 
     private void validateRoundPlans(List<LiveRoundPlan> roundPlans) {
@@ -78,6 +88,7 @@ public class LiveScheduleService {
             Set<Integer> tableNumbers = new HashSet<>();
             Set<Long> maleMemberIds = new HashSet<>();
             Set<Long> femaleMemberIds = new HashSet<>();
+            Set<Long> assignedMemberIds = new HashSet<>();
             for (LiveRoomPlan roomPlan : roundPlan.rooms()) {
                 if (roomPlan == null) {
                     throw new IllegalArgumentException("roomPlan must not be null");
@@ -90,6 +101,21 @@ public class LiveScheduleService {
                 }
                 if (!femaleMemberIds.add(roomPlan.femaleMemberId())) {
                     throw new IllegalArgumentException("duplicate femaleMemberId is not allowed in a round");
+                }
+                assignedMemberIds.add(roomPlan.maleMemberId());
+                assignedMemberIds.add(roomPlan.femaleMemberId());
+            }
+
+            Set<Long> idleMemberIds = new HashSet<>();
+            for (Long idleMemberId : roundPlan.idleMemberIds()) {
+                if (idleMemberId == null) {
+                    throw new IllegalArgumentException("idleMemberId must not be null");
+                }
+                if (!idleMemberIds.add(idleMemberId)) {
+                    throw new IllegalArgumentException("duplicate idleMemberId is not allowed in a round");
+                }
+                if (assignedMemberIds.contains(idleMemberId)) {
+                    throw new IllegalArgumentException("idle member must not be assigned to a room in the same round");
                 }
             }
         }

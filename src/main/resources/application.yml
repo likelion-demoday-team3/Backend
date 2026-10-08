@@ -19,3 +19,5 @@ app:
     secret: ${JWT_SECRET}
     access-ttl: 7d
     signup-ttl: 30m
+  live:
+        round-duration-seconds: 180
