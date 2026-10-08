@@ -13,6 +13,8 @@ import java.time.Instant;
 /**
  * created_at, updated_at 공통 처리.
  * 동작하려면 설정 클래스에 @EnableJpaAuditing 이 필요하다.
+ * MappedSuperclass가
+ * "이 클래스의 필드는 이걸 상속한 각 엔티티의 테이블에 컬럼으로 들어간다"고 알려준다.
  */
 @Getter
 @MappedSuperclass

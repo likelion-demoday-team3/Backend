@@ -1,5 +1,7 @@
 package com.example.kiwi_backend.member.application;
 
+import com.example.kiwi_backend.contract.dto.MemberCredential;
+import com.example.kiwi_backend.contract.query.MemberCredentialQuery;
 import com.example.kiwi_backend.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

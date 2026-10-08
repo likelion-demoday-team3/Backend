@@ -1,0 +1,10 @@
+# application-local.yml — 내 컴퓨터에서만 다른 것
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kiwi
+    username: kiwi
+    password: kiwi
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000

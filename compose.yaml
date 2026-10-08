@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: kiwi-postgres
+    environment:
+      POSTGRES_DB: kiwi
+      POSTGRES_USER: kiwi
+      POSTGRES_PASSWORD: kiwi
+      TZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - kiwi-pgdata:/var/lib/postgresql/data
+
+volumes:
+  kiwi-pgdata:

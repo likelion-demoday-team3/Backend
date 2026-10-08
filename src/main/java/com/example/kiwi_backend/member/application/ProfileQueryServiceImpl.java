@@ -1,5 +1,7 @@
 package com.example.kiwi_backend.member.application;
 
+import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
+import com.example.kiwi_backend.contract.query.ProfileQueryService;
 import com.example.kiwi_backend.member.domain.entity.Profile;
 import com.example.kiwi_backend.member.domain.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,6 @@
 package com.example.kiwi_backend.live.domain;
 
-import com.example.kiwi_backend.member.domain.enumerated.Gender;
+import com.example.kiwi_backend.contract.dto.Gender;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;

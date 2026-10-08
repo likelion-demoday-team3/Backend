@@ -1,4 +1,6 @@
-package com.example.kiwi_backend.member.application;
+package com.example.kiwi_backend.contract.query;
+
+import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
 
 import java.util.Collection;
 import java.util.Map;

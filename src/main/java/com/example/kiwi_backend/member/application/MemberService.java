@@ -1,4 +1,4 @@
-package com.example.kiwi_backend.member.application.service;
+package com.example.kiwi_backend.member.application;
 
 import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
 import com.example.kiwi_backend.common.exception.NotFoundException;
