@@ -10,6 +10,10 @@ import java.util.List;
  */
 public interface SessionQueryService {
 
+    /**
+     * 이 회원이 이 세션의 유효한 참가자인지 (신청 또는 출석 상태).
+     * 취소했거나 노쇼면 false. WebSocket join 때 사용한다.
+     */
     boolean isParticipant(Long sessionId, Long memberId);
 
     Instant getStartTime(Long sessionId);
