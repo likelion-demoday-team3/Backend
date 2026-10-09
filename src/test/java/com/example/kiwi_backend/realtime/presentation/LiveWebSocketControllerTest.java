@@ -17,8 +17,10 @@ import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Instant;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class LiveWebSocketControllerTest {
@@ -73,5 +75,16 @@ class LiveWebSocketControllerTest {
         controller.signal(request, authUser);
 
         verify(realtimeSignalService).sendSignal(request, 101L);
+    }
+
+    @Test
+    void signalRejectsUnauthenticatedSender() {
+        SignalRequest request = new SignalRequest(10L, 100L, 201L, SignalType.OFFER, "offer-sdp");
+
+        assertThatThrownBy(() -> controller.signal(request, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("authenticated member is required");
+
+        verifyNoInteractions(realtimeSignalService);
     }
 }
