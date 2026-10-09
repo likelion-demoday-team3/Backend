@@ -22,11 +22,13 @@ class LiveRoundSchedulerServiceTest {
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoundStateService liveRoundStateService = mock(LiveRoundStateService.class);
+    private final LiveVotingStartService liveVotingStartService = mock(LiveVotingStartService.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
 
     private final LiveRoundSchedulerService service = new LiveRoundSchedulerService(
             liveRoundRepository,
             liveRoundStateService,
+            liveVotingStartService,
             taskScheduler
     );
 
@@ -87,5 +89,23 @@ class LiveRoundSchedulerServiceTest {
         assertThatThrownBy(() -> service.startSessionRounds(10L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("round not found");
+    }
+
+    @Test
+    void lastRoundStartsVotingInsteadOfSchedulingAnotherRound() {
+        ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
+        when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
+                .thenReturn(List.of(LiveRound.create(10L, 1)));
+        when(liveRoundStateService.completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class)))
+                .thenReturn(new LiveRoundAdvanceResult(10L, 1, false, null, LiveRoundPhase.FINISHED, 0));
+
+        service.startSessionRounds(10L);
+        ArgumentCaptor<Runnable> taskCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(taskScheduler).schedule(taskCaptor.capture(), any(Instant.class));
+
+        taskCaptor.getValue().run();
+
+        verify(liveVotingStartService).startVoting(eq(10L), any(Instant.class));
+        verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
     }
 }
