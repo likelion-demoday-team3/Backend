@@ -1,5 +1,9 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
+import com.example.kiwi_backend.contract.dto.CompatibilitySummary;
+import com.example.kiwi_backend.contract.query.CompatQueryService;
+import com.example.kiwi_backend.contract.query.ProfileQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
@@ -8,12 +12,15 @@ import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantR
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,12 +35,17 @@ class LiveRoundBroadcastServiceTest {
     private final LiveRoomRepository liveRoomRepository = mock(LiveRoomRepository.class);
     private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository =
             mock(LiveRoundIdleParticipantRepository.class);
+    private final ProfileQueryService profileQueryService = mock(ProfileQueryService.class);
+    private final ObjectProvider<CompatQueryService> compatQueryServiceProvider = mock(ObjectProvider.class);
+    private final CompatQueryService compatQueryService = mock(CompatQueryService.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
 
     private final LiveRoundBroadcastService service = new LiveRoundBroadcastService(
             liveRoundRepository,
             liveRoomRepository,
             liveRoundIdleParticipantRepository,
+            profileQueryService,
+            compatQueryServiceProvider,
             messagingTemplate
     );
 
@@ -47,6 +59,14 @@ class LiveRoundBroadcastServiceTest {
                 .thenReturn(Optional.of(round));
         when(liveRoomRepository.findAllByRoundIdOrderByTableNoAsc(1L))
                 .thenReturn(List.of(firstRoom, secondRoom));
+        when(profileQueryService.getCards(Set.of(101L, 201L, 102L, 202L))).thenReturn(Map.of(
+                101L, card(101L), 201L, card(201L), 102L, card(102L), 202L, card(202L)
+        ));
+        when(compatQueryServiceProvider.getIfAvailable()).thenReturn(compatQueryService);
+        when(compatQueryService.getCompatibility(10L, 101L, 201L))
+                .thenReturn(new CompatibilitySummary(82, "대화 취향이 비슷합니다"));
+        when(compatQueryService.getCompatibility(10L, 102L, 202L))
+                .thenReturn(new CompatibilitySummary(74, "관심사가 겹칩니다"));
 
         LiveRoundBroadcastResult result = service.broadcastRoundAssignments(10L, 1);
 
@@ -72,6 +92,12 @@ class LiveRoundBroadcastServiceTest {
         assertThat(messageCaptor.getAllValues())
                 .extracting(LiveRoundAssignmentMessage::partnerMemberId)
                 .containsExactly(201L, 101L, 202L, 102L);
+        assertThat(messageCaptor.getAllValues())
+                .extracting(message -> message.partnerProfileCard().memberId())
+                .containsExactly(201L, 101L, 202L, 102L);
+        assertThat(messageCaptor.getAllValues())
+                .extracting(message -> message.compatibility().score())
+                .containsExactly(82, 82, 74, 74);
     }
 
     @Test
@@ -102,6 +128,51 @@ class LiveRoundBroadcastServiceTest {
                 .hasMessage("in-progress round만 배정 알림을 보낼 수 있습니다");
 
         verifyNoInteractions(liveRoomRepository, messagingTemplate);
+    }
+
+    @Test
+    void broadcastRoundAssignmentsRejectsMissingCardBeforeSendingAnything() {
+        LiveRound round = startedRound(10L, 1L, 1);
+        LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1)).thenReturn(Optional.of(round));
+        when(liveRoomRepository.findAllByRoundIdOrderByTableNoAsc(1L)).thenReturn(List.of(room));
+        when(profileQueryService.getCards(Set.of(101L, 201L))).thenReturn(Map.of(101L, card(101L)));
+
+        assertThatThrownBy(() -> service.broadcastRoundAssignments(10L, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("라운드 참가자 프로필 카드가 없습니다");
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    void broadcastRoundAssignmentsRejectsMissingCompatibilityBeforeSendingAnything() {
+        LiveRound round = startedRound(10L, 1L, 1);
+        LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1)).thenReturn(Optional.of(round));
+        when(liveRoomRepository.findAllByRoundIdOrderByTableNoAsc(1L)).thenReturn(List.of(room));
+        when(profileQueryService.getCards(Set.of(101L, 201L)))
+                .thenReturn(Map.of(101L, card(101L), 201L, card(201L)));
+        when(compatQueryServiceProvider.getIfAvailable()).thenReturn(compatQueryService);
+
+        assertThatThrownBy(() -> service.broadcastRoundAssignments(10L, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("라운드 참가자 궁합 결과가 없습니다");
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    void broadcastRoundAssignmentsRejectsMissingCompatImplementation() {
+        LiveRound round = startedRound(10L, 1L, 1);
+        LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1)).thenReturn(Optional.of(round));
+        when(liveRoomRepository.findAllByRoundIdOrderByTableNoAsc(1L)).thenReturn(List.of(room));
+        when(profileQueryService.getCards(Set.of(101L, 201L)))
+                .thenReturn(Map.of(101L, card(101L), 201L, card(201L)));
+
+        assertThatThrownBy(() -> service.broadcastRoundAssignments(10L, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("CompatQueryService 구현체가 필요합니다");
+        verifyNoInteractions(messagingTemplate);
     }
 
     @Test
@@ -167,5 +238,9 @@ class LiveRoundBroadcastServiceTest {
         LiveRoom room = LiveRoom.create(round, tableNo, maleMemberId, femaleMemberId);
         ReflectionTestUtils.setField(room, "id", roomId);
         return room;
+    }
+
+    private PartnerProfileCard card(Long memberId) {
+        return new PartnerProfileCard(memberId, "학교", "이상형", "데이트 스타일", "연락 스타일", "연애 성향", List.of("영화"));
     }
 }
