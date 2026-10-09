@@ -1,5 +1,9 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
+import com.example.kiwi_backend.contract.dto.CompatibilitySummary;
+import com.example.kiwi_backend.contract.query.CompatQueryService;
+import com.example.kiwi_backend.contract.query.ProfileQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
@@ -8,11 +12,16 @@ import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +34,8 @@ public class LiveRoundBroadcastService {
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoomRepository liveRoomRepository;
     private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository;
+    private final ProfileQueryService profileQueryService;
+    private final ObjectProvider<CompatQueryService> compatQueryServiceProvider;
     private final SimpMessagingTemplate messagingTemplate;
 
     public LiveRoundBroadcastResult broadcastRoundAssignments(Long sessionId, int roundNumber) {
@@ -49,10 +60,35 @@ public class LiveRoundBroadcastService {
             throw new IllegalStateException("round has no rooms");
         }
 
+        Set<Long> memberIds = new HashSet<>();
+        for (LiveRoom room : rooms) {
+            memberIds.add(room.getMaleMemberId());
+            memberIds.add(room.getFemaleMemberId());
+        }
+        Map<Long, PartnerProfileCard> cards = profileQueryService.getCards(memberIds);
+        if (cards == null || memberIds.stream().anyMatch(id -> cards.get(id) == null)) {
+            throw new IllegalStateException("라운드 참가자 프로필 카드가 없습니다");
+        }
+        CompatQueryService compatQueryService = compatQueryServiceProvider.getIfAvailable();
+        if (compatQueryService == null) {
+            throw new IllegalStateException("CompatQueryService 구현체가 필요합니다");
+        }
+        Map<Long, CompatibilitySummary> compatibilityByRoomId = new HashMap<>();
+        for (LiveRoom room : rooms) {
+            CompatibilitySummary compatibility = compatQueryService.getCompatibility(
+                    sessionId, room.getMaleMemberId(), room.getFemaleMemberId());
+            if (compatibility == null) {
+                throw new IllegalStateException("라운드 참가자 궁합 결과가 없습니다");
+            }
+            compatibilityByRoomId.put(room.getId(), compatibility);
+        }
+
         int recipientCount = 0;
         for (LiveRoom room : rooms) {
-            sendAssignment(round, room, room.getMaleMemberId(), room.getFemaleMemberId());
-            sendAssignment(round, room, room.getFemaleMemberId(), room.getMaleMemberId());
+            sendAssignment(round, room, room.getMaleMemberId(), room.getFemaleMemberId(),
+                    cards.get(room.getFemaleMemberId()), compatibilityByRoomId.get(room.getId()));
+            sendAssignment(round, room, room.getFemaleMemberId(), room.getMaleMemberId(),
+                    cards.get(room.getMaleMemberId()), compatibilityByRoomId.get(room.getId()));
             recipientCount += 2;
         }
 
@@ -90,7 +126,8 @@ public class LiveRoundBroadcastService {
         }
     }
 
-    private void sendAssignment(LiveRound round, LiveRoom room, Long memberId, Long partnerMemberId) {
+    private void sendAssignment(LiveRound round, LiveRoom room, Long memberId, Long partnerMemberId,
+                                PartnerProfileCard partnerProfileCard, CompatibilitySummary compatibility) {
         messagingTemplate.convertAndSendToUser(
                 memberId.toString(),
                 ROUND_ASSIGNED_DESTINATION,
@@ -101,7 +138,9 @@ public class LiveRoundBroadcastService {
                         room.getId(),
                         room.getTableNo(),
                         memberId,
-                        partnerMemberId
+                        partnerMemberId,
+                        partnerProfileCard,
+                        compatibility
                 )
         );
     }

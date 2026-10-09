@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.live.domain.repository;
 
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
+import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,4 +14,6 @@ public interface LiveRoundRepository extends JpaRepository<LiveRound, Long> {
     List<LiveRound> findAllBySessionIdOrderByRoundNumberAsc(Long sessionId);
 
     Optional<LiveRound> findBySessionIdAndRoundNumber(Long sessionId, int roundNumber);
+
+    Optional<LiveRound> findFirstBySessionIdAndStatusOrderByRoundNumberAsc(Long sessionId, LiveRoundStatus status);
 }

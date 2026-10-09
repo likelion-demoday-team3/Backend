@@ -1,8 +1,12 @@
 package com.example.kiwi_backend.contract.query;
 
+import com.example.kiwi_backend.live.domain.LiveParticipant;
+
+import java.time.Instant;
+import java.util.List;
+
 /**
- * 세션 정보 조회. session이 구현하고 live, realtime, vote 등이 사용한다.
- * 로비·배정표 관련 메서드는 A와 정한 뒤 추가한다.
+ * session 모듈이 구현하고 live/realtime이 사용하는 세션 조회 계약.
  */
 public interface SessionQueryService {
 
@@ -11,4 +15,8 @@ public interface SessionQueryService {
      * 취소했거나 노쇼면 false. WebSocket join 때 사용한다.
      */
     boolean isParticipant(Long sessionId, Long memberId);
+
+    Instant getStartTime(Long sessionId);
+
+    List<LiveParticipant> getLiveParticipants(Long sessionId);
 }
