@@ -1,5 +1,6 @@
 package com.example.kiwi_backend.realtime.service;
 
+import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
@@ -9,6 +10,7 @@ import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import com.example.kiwi_backend.realtime.dto.LiveJoinResponse;
 import com.example.kiwi_backend.realtime.dto.LiveJoinStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class LiveJoinService {
 
+    private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider;
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoomRepository liveRoomRepository;
     private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository;
@@ -27,6 +30,14 @@ public class LiveJoinService {
         }
         if (memberId == null) {
             throw new IllegalArgumentException("memberId must not be null");
+        }
+
+        SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
+        if (sessionQueryService == null) {
+            throw new IllegalStateException("SessionQueryService 구현체가 필요합니다");
+        }
+        if (!sessionQueryService.isParticipant(sessionId, memberId)) {
+            throw new IllegalArgumentException("신청한 참가자만 입장할 수 있습니다");
         }
 
         return liveRoundRepository.findFirstBySessionIdAndStatusOrderByRoundNumberAsc(

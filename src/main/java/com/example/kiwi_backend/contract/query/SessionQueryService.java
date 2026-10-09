@@ -2,6 +2,7 @@ package com.example.kiwi_backend.contract.query;
 
 import com.example.kiwi_backend.live.domain.LiveParticipant;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -10,6 +11,8 @@ import java.util.List;
 public interface SessionQueryService {
 
     boolean isParticipant(Long sessionId, Long memberId);
+
+    Instant getStartTime(Long sessionId);
 
     List<LiveParticipant> getLiveParticipants(Long sessionId);
 }

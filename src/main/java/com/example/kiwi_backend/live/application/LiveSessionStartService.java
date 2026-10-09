@@ -1,15 +1,20 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.command.SessionAttendanceCommand;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.MatchPair;
 import com.example.kiwi_backend.live.domain.RotationTable;
 import com.example.kiwi_backend.live.domain.RotationTableGenerator;
 import com.example.kiwi_backend.live.domain.RoundAssignment;
+import com.example.kiwi_backend.realtime.service.LiveLobbyPresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -17,6 +22,9 @@ import java.util.List;
 public class LiveSessionStartService {
 
     private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider;
+    private final ObjectProvider<SessionAttendanceCommand> sessionAttendanceCommandProvider;
+    private final LiveLobbyPresenceService lobbyPresenceService;
+    private final Clock clock;
     private final RotationTableGenerator rotationTableGenerator;
     private final LiveScheduleService liveScheduleService;
     private final LiveRoundSchedulerService liveRoundSchedulerService;
@@ -31,6 +39,20 @@ public class LiveSessionStartService {
         if (sessionQueryService == null) {
             throw new IllegalStateException("SessionQueryService 구현체가 필요합니다");
         }
+
+        Instant startTime = sessionQueryService.getStartTime(sessionId);
+        if (startTime == null) {
+            throw new IllegalStateException("세션 시작 시각을 찾을 수 없습니다");
+        }
+        if (clock.instant().isBefore(startTime.plus(Duration.ofMinutes(1)))) {
+            throw new IllegalStateException("로비 마감 시각 전에는 세션을 시작할 수 없습니다");
+        }
+
+        SessionAttendanceCommand attendanceCommand = sessionAttendanceCommandProvider.getIfAvailable();
+        if (attendanceCommand == null) {
+            throw new IllegalStateException("SessionAttendanceCommand 구현체가 필요합니다");
+        }
+        attendanceCommand.finalizeAttendance(sessionId, lobbyPresenceService.closeLobby(sessionId));
 
         List<com.example.kiwi_backend.live.domain.LiveParticipant> participants =
                 sessionQueryService.getLiveParticipants(sessionId);
