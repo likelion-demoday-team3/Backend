@@ -18,6 +18,7 @@ public class LiveRoundSchedulerService {
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoundStateService liveRoundStateService;
+    private final LiveVotingStartService liveVotingStartService;
     private final TaskScheduler taskScheduler;
     private final Set<Long> runningSessionIds = ConcurrentHashMap.newKeySet();
 
@@ -75,7 +76,11 @@ public class LiveRoundSchedulerService {
             scheduleNextRoundStart(sessionId, result.nextRoundNumber(), result.breakSeconds());
             return;
         }
-        runningSessionIds.remove(sessionId);
+        try {
+            liveVotingStartService.startVoting(sessionId, Instant.now());
+        } finally {
+            runningSessionIds.remove(sessionId);
+        }
     }
 
     private void scheduleNextRoundStart(Long sessionId, int nextRoundNumber, int breakSeconds) {
