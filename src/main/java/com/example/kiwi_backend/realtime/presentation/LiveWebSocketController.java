@@ -47,8 +47,9 @@ public class LiveWebSocketController {
         if (startTime == null) {
             throw new IllegalStateException("세션 시작 시각을 찾을 수 없습니다");
         }
+        Instant openAt = startTime.minus(Duration.ofMinutes(5));
         Instant closeAt = startTime.plus(Duration.ofMinutes(1));
-        lobbyPresenceService.join(request.sessionId(), memberId, websocketSessionId, closeAt);
+        lobbyPresenceService.join(request.sessionId(), memberId, websocketSessionId, openAt, closeAt);
         lobbyStartScheduler.scheduleIfNeeded(request.sessionId(), closeAt);
 
         messagingTemplate.convertAndSendToUser(
