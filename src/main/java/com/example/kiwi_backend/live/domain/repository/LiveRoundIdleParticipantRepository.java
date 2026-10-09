@@ -8,4 +8,6 @@ import java.util.List;
 public interface LiveRoundIdleParticipantRepository extends JpaRepository<LiveRoundIdleParticipant, Long> {
 
     List<LiveRoundIdleParticipant> findAllByRoundIdOrderByMemberIdAsc(Long roundId);
+
+    boolean existsByRoundIdAndMemberId(Long roundId, Long memberId);
 }
