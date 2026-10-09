@@ -116,6 +116,50 @@ class RealtimeSignalServiceTest {
         verifyNoInteractions(messagingTemplate);
     }
 
+    @Test
+    void sendSignalSendsAnswerAndIceCandidateBackToRoomPartner() {
+        LiveRound round = startedRound(10L, 1L, 1);
+        LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
+        when(liveRoomRepository.findById(100L)).thenReturn(Optional.of(room));
+
+        service.sendSignal(new SignalRequest(10L, 100L, 101L, SignalType.ANSWER, "answer-sdp"), 201L);
+        service.sendSignal(new SignalRequest(10L, 100L, 101L, SignalType.ICE_CANDIDATE, "candidate"), 201L);
+
+        verify(messagingTemplate).convertAndSendToUser(
+                "101", RealtimeSignalService.SIGNAL_DESTINATION,
+                new SignalMessage(10L, 100L, 201L, 101L, SignalType.ANSWER, "answer-sdp"));
+        verify(messagingTemplate).convertAndSendToUser(
+                "101", RealtimeSignalService.SIGNAL_DESTINATION,
+                new SignalMessage(10L, 100L, 201L, 101L, SignalType.ICE_CANDIDATE, "candidate"));
+    }
+
+    @Test
+    void sendSignalRejectsUnknownRoom() {
+        when(liveRoomRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.sendSignal(
+                new SignalRequest(10L, 100L, 201L, SignalType.OFFER, "offer-sdp"), 101L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("room not found");
+
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    void sendSignalRejectsCompletedRound() {
+        LiveRound round = startedRound(10L, 1L, 1);
+        round.complete(Instant.parse("2026-10-07T09:03:00Z"));
+        LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
+        when(liveRoomRepository.findById(100L)).thenReturn(Optional.of(room));
+
+        assertThatThrownBy(() -> service.sendSignal(
+                new SignalRequest(10L, 100L, 201L, SignalType.ICE_CANDIDATE, "candidate"), 101L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("진행 중인 라운드에서만 signal을 보낼 수 있습니다");
+
+        verifyNoInteractions(messagingTemplate);
+    }
+
     private LiveRound persistedRound(Long sessionId, Long roundId, int roundNumber) {
         LiveRound round = LiveRound.create(sessionId, roundNumber);
         ReflectionTestUtils.setField(round, "id", roundId);
