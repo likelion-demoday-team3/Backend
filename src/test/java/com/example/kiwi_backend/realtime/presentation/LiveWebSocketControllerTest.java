@@ -62,7 +62,8 @@ class LiveWebSocketControllerTest {
 
         controller.join(request, authUser, "ws-1");
 
-        verify(lobbyPresenceService).join(10L, 101L, "ws-1", Instant.parse("2026-10-09T12:01:00Z"));
+        verify(lobbyPresenceService).join(10L, 101L, "ws-1",
+                Instant.parse("2026-10-09T11:55:00Z"), Instant.parse("2026-10-09T12:01:00Z"));
         verify(lobbyStartScheduler).scheduleIfNeeded(10L, Instant.parse("2026-10-09T12:01:00Z"));
         verify(messagingTemplate).convertAndSendToUser("101", "/queue/live/joined", response);
     }

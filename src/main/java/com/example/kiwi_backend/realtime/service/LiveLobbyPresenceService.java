@@ -20,18 +20,25 @@ public class LiveLobbyPresenceService {
         this.clock = clock;
     }
 
-    public synchronized void join(Long sessionId, Long memberId, String websocketSessionId, Instant closeAt) {
+    public synchronized void join(Long sessionId, Long memberId, String websocketSessionId,
+                                  Instant openAt, Instant closeAt) {
         if (sessionId == null || memberId == null || websocketSessionId == null || websocketSessionId.isBlank()
-                || closeAt == null) {
-            throw new IllegalArgumentException("sessionId, memberId, websocketSessionId and closeAt are required");
+                || openAt == null || closeAt == null || !openAt.isBefore(closeAt)) {
+            throw new IllegalArgumentException("sessionId, memberId, websocketSessionId and a valid lobby window are required");
         }
 
         Lobby lobby = lobbies.computeIfAbsent(sessionId, ignored -> new Lobby());
         if (lobby.attendees != null && !lobby.attendees.contains(memberId)) {
             throw new IllegalStateException("로비가 마감되어 새 참가자는 입장할 수 없습니다");
         }
-        if (lobby.attendees == null && !clock.instant().isBefore(closeAt)) {
-            throw new IllegalStateException("로비 마감 시각이 지났습니다");
+        if (lobby.attendees == null) {
+            Instant now = clock.instant();
+            if (now.isBefore(openAt)) {
+                throw new IllegalStateException("로비 입장 가능 시각 전입니다");
+            }
+            if (!now.isBefore(closeAt)) {
+                throw new IllegalStateException("로비 마감 시각이 지났습니다");
+            }
         }
 
         disconnect(websocketSessionId);
