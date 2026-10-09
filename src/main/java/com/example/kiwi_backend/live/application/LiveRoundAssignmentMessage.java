@@ -1,5 +1,8 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
+import com.example.kiwi_backend.contract.dto.CompatibilitySummary;
+
 public record LiveRoundAssignmentMessage(
         Long sessionId,
         Long roundId,
@@ -7,6 +10,8 @@ public record LiveRoundAssignmentMessage(
         Long roomId,
         int tableNo,
         Long memberId,
-        Long partnerMemberId
+        Long partnerMemberId,
+        PartnerProfileCard partnerProfileCard,
+        CompatibilitySummary compatibility
 ) {
 }
