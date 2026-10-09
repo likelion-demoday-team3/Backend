@@ -2,8 +2,8 @@ package com.example.kiwi_backend.realtime.presentation;
 
 import com.example.kiwi_backend.common.security.AuthUser;
 import com.example.kiwi_backend.realtime.dto.LiveJoinRequest;
-import com.example.kiwi_backend.realtime.dto.LiveJoinResponse;
 import com.example.kiwi_backend.realtime.dto.SignalRequest;
+import com.example.kiwi_backend.realtime.service.LiveJoinService;
 import com.example.kiwi_backend.realtime.service.RealtimeSignalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +19,7 @@ public class LiveWebSocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final RealtimeSignalService realtimeSignalService;
+    private final LiveJoinService liveJoinService;
 
     @MessageMapping("/live/join")
     public void join(@Valid LiveJoinRequest request, @AuthenticationPrincipal AuthUser authUser) {
@@ -28,7 +29,7 @@ public class LiveWebSocketController {
         messagingTemplate.convertAndSendToUser(
                 memberId.toString(),
                 "/queue/live/joined",
-                new LiveJoinResponse(request.sessionId(), memberId, "JOINED")
+                liveJoinService.join(request.sessionId(), memberId)
         );
 //        입장 확인 메시지를 보낸다
     }
