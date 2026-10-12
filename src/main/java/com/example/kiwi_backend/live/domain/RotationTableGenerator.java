@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.live.domain;
 
 import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -40,6 +41,7 @@ public class SessionApplicationService {
     private final MemberQueryService memberQueryService;
     private final GemWallet gemWallet;
     private final AliasGenerator aliasGenerator;
+    private final Clock clock;
 
     @Transactional
     public ApplyResponse apply(Long memberId, Long sessionId) {
@@ -51,7 +53,7 @@ public class SessionApplicationService {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
 
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         if (!session.isApplicationOpen(now)) {
             throw new IllegalStateException("신청 기간이 아닙니다");
         }
@@ -94,7 +96,7 @@ public class SessionApplicationService {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
 
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         if (!session.isApplicationOpen(now)) {
             throw new IllegalStateException("취소할 수 있는 기간이 지났습니다");
         }

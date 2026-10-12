@@ -1,8 +1,8 @@
 package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionLivePhaseCommand;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
-import com.example.kiwi_backend.live.domain.LiveParticipant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

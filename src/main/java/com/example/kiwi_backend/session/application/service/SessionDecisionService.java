@@ -7,7 +7,6 @@ import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
 import com.example.kiwi_backend.session.domain.entity.ParticipantStatus;
 import com.example.kiwi_backend.session.domain.entity.SessionParticipant;
-import com.example.kiwi_backend.session.domain.entity.SessionStatus;
 import com.example.kiwi_backend.session.domain.policy.ProceedPolicy;
 import com.example.kiwi_backend.session.domain.repository.DatingSessionRepository;
 import com.example.kiwi_backend.session.domain.repository.SessionParticipantRepository;
@@ -57,13 +56,15 @@ public class SessionDecisionService {
         }
     }
 
-    /** 운영자 취소. 신청자 전원 100% 환불 */
+    /** 운영자 취소. 신청자 전원 100% 환불. 로비 마감 전까지만 가능 */
     @Transactional
     public void cancelByAdmin(Long sessionId) {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
-        if (session.getStatus() == SessionStatus.CANCELLED || session.getStatus() == SessionStatus.COMPLETED) {
-            throw new IllegalStateException("이미 끝났거나 취소된 세션입니다");
+        // 로비 마감 전(SCHEDULED, RECRUITING, READY)까지만 허용.
+        // 진행 중(IN_PROGRESS) 취소는 A의 라운드 타이머를 멈추는 연동이 없어서 막아둔다.
+        if (!session.isAdminCancellable()) {
+            throw new IllegalStateException("로비 마감 전까지만 취소할 수 있습니다");
         }
         List<SessionParticipant> applied =
                 participantRepository.findAllBySessionIdAndStatus(sessionId, ParticipantStatus.APPLIED);

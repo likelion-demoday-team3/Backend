@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,11 +32,12 @@ public class SessionReadService {
 
     private final DatingSessionRepository sessionRepository;
     private final SessionParticipantRepository participantRepository;
+    private final Clock clock;
 
     /** 아직 시작 전이고 모집 중이거나 진행 확정된 세션 */
     public List<SessionSummaryResponse> listUpcoming() {
         List<DatingSession> sessions = sessionRepository
-                .findAllByStatusInAndStartTimeAfterOrderByStartTimeAsc(VISIBLE_STATUSES, Instant.now());
+                .findAllByStatusInAndStartTimeAfterOrderByStartTimeAsc(VISIBLE_STATUSES, clock.instant());
         Map<Long, SeatCount> seats = seatCounts(sessions);
         return sessions.stream()
                 .map(session -> SessionSummaryResponse.of(session, seats.get(session.getId())))

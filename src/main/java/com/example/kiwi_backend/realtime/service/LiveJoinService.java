@@ -32,12 +32,14 @@ public class LiveJoinService {
             throw new IllegalArgumentException("memberId must not be null");
         }
 
+        // 구현체 가져오기
         SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
         if (sessionQueryService == null) {
             throw new IllegalStateException("SessionQueryService 구현체가 필요합니다");
         }
+        // 이 회원이 지금 라이브(로비나 라운드)에 들어와도 되는가
         if (!sessionQueryService.isParticipant(sessionId, memberId)) {
-            throw new IllegalArgumentException("신청한 참가자만 입장할 수 있습니다");
+            throw new IllegalStateException("입장 불가합니다");
         }
 
         return liveRoundRepository.findFirstBySessionIdAndStatusOrderByRoundNumberAsc(

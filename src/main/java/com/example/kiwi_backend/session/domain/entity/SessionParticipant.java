@@ -102,6 +102,25 @@ public class SessionParticipant {
         this.cancelledAt = now;
     }
 
+    /**
+     * 로비 마감 때 접속해 있었음 → 출석.
+     * enteredAt(실제 로비 입장 시각)은 A의 메모리에만 있어서 지금은 기록하지 않는다.
+     */
+    public void attend() {
+        if (status != ParticipantStatus.APPLIED) {
+            throw new IllegalStateException("신청 상태에서만 출석 처리할 수 있습니다");
+        }
+        this.status = ParticipantStatus.ATTENDED;
+    }
+
+    /** 로비 마감 때 접속해 있지 않았음 → 노쇼 (환불 없음) */
+    public void markNoShow() {
+        if (status != ParticipantStatus.APPLIED) {
+            throw new IllegalStateException("신청 상태에서만 노쇼 처리할 수 있습니다");
+        }
+        this.status = ParticipantStatus.NO_SHOW;
+    }
+
     /** 신청했거나 출석한 유효한 참가자인가 */
     public boolean isActive() {
         return status == ParticipantStatus.APPLIED || status == ParticipantStatus.ATTENDED;

@@ -1,16 +1,20 @@
 package com.example.kiwi_backend.common.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * @Scheduled 사용 설정 (세션 30분 전 판단 등).
+ * @Scheduled 사용 설정 (세션 30분 전 판단, A의 로비 마감·1라운드 시작 주기 조회 등).
  *
- * 주의: A의 TaskSchedulerConfig에 이미 @EnableScheduling이 있으면 이 클래스는 지워도 된다 (중복돼도 동작은 같음).
- * @Scheduled 작업과 A의 라운드 타이머가 같은 TaskScheduler를 쓰므로, 그 스레드 풀 크기가 2 이상인지 확인할 것.
- * 1이면 세션 판단 작업이 도는 동안 라운드 타이머가 밀린다.
+ * app.scheduling.enabled=false 로 끌 수 있다. 통합 테스트에서 스케줄러가 테스트 데이터를
+ * 마음대로 처리하지 않도록 끄기 위한 용도. 설정이 없으면 켜진다.
+ *
+ * A의 TaskSchedulerConfig(풀 크기 2)를 함께 쓴다.
+ * A의 TaskSchedulerConfig에 @EnableScheduling을 따로 붙이지 말 것 (이 설정으로 끄는 게 안 먹힘).
  */
 @Configuration
 @EnableScheduling
+@ConditionalOnProperty(name = "app.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class SchedulingConfig {
 }
