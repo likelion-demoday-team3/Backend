@@ -72,7 +72,7 @@ public class SessionQueryServiceImpl implements SessionQueryService {
 
     // 1라운드를 시작할 세션이 있는지 조회한다
     @Override
-    public List<Long> findSessionIdsDueForFirstRound(Instant now) {
+    public List<Long> findSessionIdsDueForLobbyClose(Instant now) {
         return sessionRepository.findIdsDueForFirstRound(SessionStatus.IN_PROGRESS, LiveStatus.WAITING, now);
     }
 
