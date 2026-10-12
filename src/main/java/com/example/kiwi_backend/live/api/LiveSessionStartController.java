@@ -16,6 +16,7 @@ public class LiveSessionStartController {
 
     private final LiveSessionStartService liveSessionStartService;
 
+    // TODO for 10/12 update: 반환값 처리
     @PostMapping("/start")
     public ApiResponse<LiveSessionStartResponse> startLiveSession(@PathVariable Long sessionId) {
         return ApiResponse.ok(LiveSessionStartResponse.from(

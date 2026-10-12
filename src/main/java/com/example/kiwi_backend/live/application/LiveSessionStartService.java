@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionAttendanceCommand;
+import com.example.kiwi_backend.contract.dto.AttendanceResult;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.*;
@@ -14,6 +15,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +29,11 @@ public class LiveSessionStartService {
     private final LiveScheduleService liveScheduleService;
     private final LiveRoundSchedulerService liveRoundSchedulerService;
 
+    // 10/12 update:
+    // 1. startLiveSession의 반환값은 void
+    // 2. 시작 시각·마감 시각 확인은 지움 (finalizeAttendance가 확인함)
     @Transactional
-    public LiveSessionStartResult startLiveSession(Long sessionId) {
+    public void startLiveSession(Long sessionId) {
         if (sessionId == null) {
             throw new IllegalArgumentException("sessionId must not be null");
         }
@@ -38,41 +43,38 @@ public class LiveSessionStartService {
             throw new IllegalStateException("SessionQueryService 구현체가 필요합니다");
         }
 
-        Instant startTime = sessionQueryService.getStartTime(sessionId);
-        if (startTime == null) {
-            throw new IllegalStateException("세션 시작 시각을 찾을 수 없습니다");
-        }
-        if (clock.instant().isBefore(startTime.plus(Duration.ofMinutes(1)))) {
-            throw new IllegalStateException("로비 마감 시각 전에는 세션을 시작할 수 없습니다");
-        }
-
         SessionAttendanceCommand attendanceCommand = sessionAttendanceCommandProvider.getIfAvailable();
         if (attendanceCommand == null) {
             throw new IllegalStateException("SessionAttendanceCommand 구현체가 필요합니다");
         }
-        attendanceCommand.finalizeAttendance(sessionId, lobbyPresenceService.closeLobby(sessionId));
 
-        List<LiveParticipant> participants =
-                sessionQueryService.getLiveParticipants(sessionId);
-//        참가자 명단 가져오기
+        // 로비 마감 순간 세션 로비에 연결되어 있는 회원
+        Set<Long> connected = lobbyPresenceService.closeLobby(sessionId);
+
+        // ① 결과 받기 : finalizeAttendance가 신청자(APPLIED) 목록을 기준으로 출석 확정
+        AttendanceResult result = attendanceCommand.finalizeAttendance(sessionId, connected);
+
+        if (result.alreadyProcessed()) {
+            // 다른 호출이 이미 처리함
+            return;
+        }
+        if (!result.proceed()) {
+            // TODO for 10/12 update: 세션 취소와 출석자 환불은 session이 이미 끝냄. 안내만 (커밋 후에)
+            afterCommit(() -> liveBroadcastService.broadcastCancelled(sessionId));
+            return;
+        }
+
+        // ② getLiveParticipants 대신 : finalizeAttendance가 참가자(ATTENDED) 목록을 List<LiveParticipant> attendees에 담아줌
+        List<LiveParticipant> participants = result.attendees();
 
         RotationTable rotationTable = rotationTableGenerator.generate(sessionId, participants);
         LiveScheduleResult scheduleResult = liveScheduleService.createSchedule(
                 sessionId,
                 toRoundPlans(rotationTable.rounds())
         );
-        LiveRoundSchedulerResult schedulerResult = liveRoundSchedulerService.startSessionRounds(sessionId);
-//        DB에 저장
 
-        return new LiveSessionStartResult(
-                sessionId,
-                participants.size(),
-                scheduleResult.roundCount(),
-                scheduleResult.roomCount(),
-                scheduleResult.idleCount(),
-                schedulerResult.firstRoundNumber(),
-                schedulerResult.roundDurationSeconds()
-        );
+        // TODO for 10/12 update: ③ startSessionRounds 호출 삭제 (주기 조회 ②에서 firstRoundAt에 시작)
+        afterCommit(() -> liveBroadcastService.broadcastStartingSoon(sessionId, result.firstRoundAt()));
     }
 
     private List<LiveRoundPlan> toRoundPlans(List<RoundAssignment> assignments) {
