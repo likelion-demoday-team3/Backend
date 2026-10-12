@@ -59,7 +59,8 @@ public class LiveSessionStartService {
             return;
         }
         if (!result.proceed()) {
-            // TODO for 10/12 update: 세션 취소와 출석자 환불은 session이 이미 끝냄. 안내만 (커밋 후에)
+            // TODO for 10/12 update: (TransactionSynchronization.afterCommit 또는 @TransactionalEventListener(AFTER_COMMIT) 사용)
+            // 세션 취소와 출석자 환불은 session이 이미 끝냄. 안내만 (커밋 후에)
             afterCommit(() -> liveBroadcastService.broadcastCancelled(sessionId));
             return;
         }
@@ -73,7 +74,8 @@ public class LiveSessionStartService {
                 toRoundPlans(rotationTable.rounds())
         );
 
-        // TODO for 10/12 update: ③ startSessionRounds 호출 삭제 (주기 조회 ②에서 firstRoundAt에 시작)
+        // TODO for 10/12 update: (TransactionSynchronization.afterCommit 또는 @TransactionalEventListener(AFTER_COMMIT) 사용)
+        // ③ startSessionRounds 호출 삭제 (주기 조회 ②에서 firstRoundAt에 시작)
         afterCommit(() -> liveBroadcastService.broadcastStartingSoon(sessionId, result.firstRoundAt()));
     }
 
