@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
@@ -27,10 +28,11 @@ public class SessionDecisionScheduler {
 
     private final DatingSessionRepository sessionRepository;
     private final SessionDecisionService decisionService;
+    private final Clock clock;
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 10_000)
     public void decideDueSessions() {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         List<Long> dueSessionIds = sessionRepository.findIdsByStatusAndStartTimeAtOrBefore(
                 SessionStatus.RECRUITING, now.plus(DatingSession.APPLY_CLOSE_BEFORE));
 

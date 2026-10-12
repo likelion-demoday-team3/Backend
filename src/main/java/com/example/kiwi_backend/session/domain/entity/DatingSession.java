@@ -19,8 +19,19 @@ import java.time.Instant;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DatingSession extends BaseTimeEntity {
 
-    /** 신청 마감 = 진행 여부 판단 시각 = 시작 30분 전 */
+    // ===== 시간 규칙 (한곳에 모아둠. 바꿀 땐 여기만) =====
+
+    /** 신청 마감 = 1차 진행 판단 = 시작 30분 전 */
     public static final Duration APPLY_CLOSE_BEFORE = Duration.ofMinutes(30);
+
+    /** 로비 오픈 = 시작 5분 전 */
+    public static final Duration LOBBY_OPEN_BEFORE = Duration.ofMinutes(5);
+
+    /** 로비 마감 = 출석 확정 = 시작 1분 후 */
+    public static final Duration LOBBY_CLOSE_AFTER = Duration.ofMinutes(1);
+
+    /** 1라운드 시작 = 시작 1분 30초 후 (로비 마감 후 30초 준비 시간) */
+    public static final Duration FIRST_ROUND_AFTER = Duration.ofSeconds(90);
 
     static final int MIN_CAPACITY = 3;
     static final int MAX_CAPACITY = 6;
@@ -123,9 +134,61 @@ public class DatingSession extends BaseTimeEntity {
         transitionTo(SessionStatus.READY);
     }
 
+    /** 로비 마감 후 출석자로 진행 확정. 1라운드 시각을 기록해서 A가 그 시각에 시작하게 한다 */
+    public void startProgress() {
+        transitionTo(SessionStatus.IN_PROGRESS);
+        this.phaseEndsAt = firstRoundAt();
+    }
+
+    /**
+     * A가 1라운드를 시작했음을 기록. 이후 "1라운드 시작할 세션" 조회에 다시 잡히지 않는다.
+     * 이미 기록됐으면 아무것도 하지 않는다 (두 번 불려도 안전).
+     */
+    public void markRoundsStarted() {
+        if (status != SessionStatus.IN_PROGRESS) {
+            throw new IllegalStateException("진행 중인 세션만 라운드를 시작할 수 있습니다");
+        }
+        if (liveStatus == LiveStatus.IN_ROUND) {
+            return;
+        }
+        this.liveStatus = LiveStatus.IN_ROUND;
+        this.phaseEndsAt = null;
+    }
+
+    /**
+     * 마지막 라운드가 끝나서 투표 시작. 투표 마감 시각을 기록하고 돌려준다.
+     * 이미 투표 중이면 처음 정한 마감 시각을 그대로 돌려준다 (A의 타이머가 두 번 불러도 안전).
+     */
+    public Instant startVoting(Instant startedAt) {
+        if (startedAt == null) {
+            throw new IllegalArgumentException("투표 시작 시각은 필수입니다");
+        }
+        if (status != SessionStatus.IN_PROGRESS) {
+            throw new IllegalStateException("진행 중인 세션만 투표를 시작할 수 있습니다");
+        }
+        if (liveStatus == LiveStatus.VOTING) {
+            return phaseEndsAt;
+        }
+        if (liveStatus != LiveStatus.IN_ROUND) {
+            throw new IllegalStateException("라운드가 끝난 뒤에만 투표를 시작할 수 있습니다");
+        }
+        this.liveStatus = LiveStatus.VOTING;
+        this.phaseEndsAt = startedAt.plusSeconds(votingDurationSeconds);
+        return phaseEndsAt;
+    }
+
     public void cancel() {
         transitionTo(SessionStatus.CANCELLED);
     }
+
+    /** 운영자 취소 가능 여부: 로비 마감 전(모집 전·모집 중·로비 대기)까지만 */
+    public boolean isAdminCancellable() {
+        return status == SessionStatus.SCHEDULED
+                || status == SessionStatus.RECRUITING
+                || status == SessionStatus.READY;
+    }
+
+    public void vote() { transitionTo(SessionStatus.VOTING); }
 
     public void complete() {
         transitionTo(SessionStatus.COMPLETED);
@@ -153,6 +216,30 @@ public class DatingSession extends BaseTimeEntity {
     /** 30분 전 진행 판단을 할 차례인가 */
     public boolean isDueForDecision(Instant now) {
         return status == SessionStatus.RECRUITING && !now.isBefore(applyDeadline());
+    }
+
+    public Instant lobbyOpenAt() {
+        return startTime.minus(LOBBY_OPEN_BEFORE);
+    }
+
+    public Instant lobbyCloseAt() {
+        return startTime.plus(LOBBY_CLOSE_AFTER);
+    }
+
+    public Instant firstRoundAt() {
+        return startTime.plus(FIRST_ROUND_AFTER);
+    }
+
+    /** 지금 로비에 들어올 수 있는가 (READY이고 오픈 ~ 마감 사이) */
+    public boolean isLobbyOpen(Instant now) {
+        return status == SessionStatus.READY
+                && !now.isBefore(lobbyOpenAt())
+                && now.isBefore(lobbyCloseAt());
+    }
+
+    /** 로비 마감(출석 확정)을 할 차례인가 */
+    public boolean isDueForLobbyClose(Instant now) {
+        return status == SessionStatus.READY && !now.isBefore(lobbyCloseAt());
     }
 
     // ===== 내부 =====

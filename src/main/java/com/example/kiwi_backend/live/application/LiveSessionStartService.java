@@ -1,11 +1,9 @@
 package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionAttendanceCommand;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
-import com.example.kiwi_backend.live.domain.MatchPair;
-import com.example.kiwi_backend.live.domain.RotationTable;
-import com.example.kiwi_backend.live.domain.RotationTableGenerator;
-import com.example.kiwi_backend.live.domain.RoundAssignment;
+import com.example.kiwi_backend.live.domain.*;
 import com.example.kiwi_backend.realtime.service.LiveLobbyPresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -54,7 +52,7 @@ public class LiveSessionStartService {
         }
         attendanceCommand.finalizeAttendance(sessionId, lobbyPresenceService.closeLobby(sessionId));
 
-        List<com.example.kiwi_backend.live.domain.LiveParticipant> participants =
+        List<LiveParticipant> participants =
                 sessionQueryService.getLiveParticipants(sessionId);
 //        참가자 명단 가져오기
 

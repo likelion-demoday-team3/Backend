@@ -3,7 +3,6 @@ package com.example.kiwi_backend.live.application;
 import com.example.kiwi_backend.contract.command.SessionLivePhaseCommand;
 import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
-import com.example.kiwi_backend.live.domain.LiveParticipant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 
 /** 운영자 세션 관리: 생성, 수정(모집 전만), 모집 시작. 취소는 SessionDecisionService */
 @Service
@@ -17,6 +17,7 @@ import java.time.Instant;
 public class AdminSessionService {
 
     private final DatingSessionRepository sessionRepository;
+    private final Clock clock;
 
     public Long create(SessionCreateRequest request) {
         DatingSession session = DatingSession.create(
@@ -27,7 +28,7 @@ public class AdminSessionService {
                 request.resultAndShareDurationSeconds(),
                 request.entryFeeGem(),
                 request.completionRefundGem(),
-                Instant.now()
+                clock.instant()
         );
         return sessionRepository.save(session).getId();
     }
@@ -43,13 +44,13 @@ public class AdminSessionService {
                 request.resultAndShareDurationSeconds(),
                 request.entryFeeGem(),
                 request.completionRefundGem(),
-                Instant.now()
+                clock.instant()
         );
     }
 
     public void openRecruiting(Long sessionId) {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
-        session.openRecruiting(Instant.now());
+        session.openRecruiting(clock.instant());
     }
 }

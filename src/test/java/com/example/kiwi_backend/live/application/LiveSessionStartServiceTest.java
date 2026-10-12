@@ -3,7 +3,6 @@ package com.example.kiwi_backend.live.application;
 import com.example.kiwi_backend.contract.command.SessionAttendanceCommand;
 import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
-import com.example.kiwi_backend.live.domain.LiveParticipant;
 import com.example.kiwi_backend.live.domain.RotationTableGenerator;
 import com.example.kiwi_backend.realtime.service.LiveLobbyPresenceService;
 import org.junit.jupiter.api.Test;
