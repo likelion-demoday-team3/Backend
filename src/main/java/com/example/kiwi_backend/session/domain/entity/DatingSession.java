@@ -188,8 +188,6 @@ public class DatingSession extends BaseTimeEntity {
                 || status == SessionStatus.READY;
     }
 
-    public void vote() { transitionTo(SessionStatus.VOTING); }
-
     public void complete() {
         transitionTo(SessionStatus.COMPLETED);
     }
