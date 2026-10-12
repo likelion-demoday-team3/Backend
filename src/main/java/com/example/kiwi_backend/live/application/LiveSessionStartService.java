@@ -60,6 +60,12 @@ public class LiveSessionStartService {
         }
         if (!result.proceed()) {
             // TODO for 10/12 update: (TransactionSynchronization.afterCommit 또는 @TransactionalEventListener(AFTER_COMMIT) 사용)
+                                        /**
+                                         * 안내 메시지는 A 쪽에서 트랜잭션 커밋 "이후"에 보낼 것.
+                                         * startLiveSession 안에서 바로 보내면, 그 뒤 배정표 저장이 실패해 전부 되돌아가도
+                                         * 참가자는 이미 "30초 후 시작" 같은 메시지를 받은 상태가 된다.
+                                         * (TransactionSynchronization.afterCommit 또는 @TransactionalEventListener(AFTER_COMMIT) 사용)
+                                         */
             // 세션 취소와 출석자 환불은 session이 이미 끝냄. 안내만 (커밋 후에)
             afterCommit(() -> liveBroadcastService.broadcastCancelled(sessionId));
             return;
@@ -75,6 +81,12 @@ public class LiveSessionStartService {
         );
 
         // TODO for 10/12 update: (TransactionSynchronization.afterCommit 또는 @TransactionalEventListener(AFTER_COMMIT) 사용)
+                                    /**
+                                     * 안내 메시지는 A 쪽에서 트랜잭션 커밋 "이후"에 보낼 것.
+                                     * startLiveSession 안에서 바로 보내면, 그 뒤 배정표 저장이 실패해 전부 되돌아가도
+                                     * 참가자는 이미 "30초 후 시작" 같은 메시지를 받은 상태가 된다.
+                                     * (TransactionSynchronization.afterCommit 또는 @TransactionalEventListener(AFTER_COMMIT) 사용)
+                                     */
         // ③ startSessionRounds 호출 삭제 (주기 조회 ②에서 firstRoundAt에 시작)
         afterCommit(() -> liveBroadcastService.broadcastStartingSoon(sessionId, result.firstRoundAt()));
     }
