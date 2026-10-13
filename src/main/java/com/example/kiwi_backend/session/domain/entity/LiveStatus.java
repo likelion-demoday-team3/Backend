@@ -9,6 +9,7 @@ public enum LiveStatus {
     WAITING,
     LOBBY,
     IN_ROUND,
+    HEART,
     VOTING,
     RESULT_AND_SHARE,
     CLOSED

@@ -22,7 +22,7 @@ public class LiveRoundSchedulerService {
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoundStateService liveRoundStateService;
-    private final LiveVotingStartService liveVotingStartService;
+    private final LiveHeartPhaseService liveHeartPhaseService;
     private final TaskScheduler taskScheduler;
     private final SessionLiveStatusCommand sessionLiveStatusCommand;
     private final Set<Long> runningSessionIds = ConcurrentHashMap.newKeySet();
@@ -94,7 +94,7 @@ public class LiveRoundSchedulerService {
             return;
         }
         try {
-            liveVotingStartService.startVoting(sessionId, Instant.now());
+            liveHeartPhaseService.startHearts(sessionId, Instant.now());
         } finally {
             runningSessionIds.remove(sessionId);
         }
