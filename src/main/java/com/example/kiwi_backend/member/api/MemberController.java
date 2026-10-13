@@ -3,10 +3,14 @@ package com.example.kiwi_backend.member.api;
 import com.example.kiwi_backend.common.response.ApiResponse;
 import com.example.kiwi_backend.common.security.AuthUser;
 import com.example.kiwi_backend.member.api.dto.InstagramIdRequest;
+import com.example.kiwi_backend.member.api.dto.IdentityVerificationRequest;
+import com.example.kiwi_backend.member.api.dto.IdentityVerificationResponse;
+import com.example.kiwi_backend.member.api.dto.IdentityVerificationStartResponse;
 import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
 import com.example.kiwi_backend.member.api.dto.PasswordChangeRequest;
 import com.example.kiwi_backend.member.api.dto.PhoneNumberRequest;
 import com.example.kiwi_backend.member.application.MemberService;
+import com.example.kiwi_backend.member.application.PortOneIdentityVerificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +23,21 @@ import org.springframework.web.bind.annotation.*;
 public class MemberController {
 
     private final MemberService memberService;
+    private final PortOneIdentityVerificationService identityVerificationService;
+
+    @PostMapping("/identity-verification/request")
+    public ApiResponse<IdentityVerificationStartResponse> startIdentityVerification(
+            @AuthenticationPrincipal AuthUser authUser) {
+        return ApiResponse.ok(identityVerificationService.start(authUser.memberId()));
+    }
+
+    @PostMapping("/identity-verification/confirm")
+    public ApiResponse<IdentityVerificationResponse> verifyIdentity(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody IdentityVerificationRequest request) {
+        return ApiResponse.ok(identityVerificationService.verify(
+                authUser.memberId(), request.identityVerificationId()));
+    }
 
     @GetMapping
     public ApiResponse<MyInfoResponse> getMyInfo(@AuthenticationPrincipal AuthUser authUser) {

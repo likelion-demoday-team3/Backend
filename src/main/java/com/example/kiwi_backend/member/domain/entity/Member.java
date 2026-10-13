@@ -89,6 +89,12 @@ public class Member extends BaseTimeEntity {
     @Column(name = "identity_verified_at")
     private Instant identityVerifiedAt;
 
+    @Column(name = "portone_identity_verification_id", unique = true, length = 40)
+    private String portoneIdentityVerificationId;
+
+    @Column(name = "pending_portone_identity_verification_id", unique = true, length = 40)
+    private String pendingPortoneIdentityVerificationId;
+
     // ===== 생성 =====
 
     /**
@@ -162,9 +168,28 @@ public class Member extends BaseTimeEntity {
         this.passwordHash = requireText(newPasswordHash, "비밀번호");
     }
 
-    public void verifyIdentity(Instant verifiedAt) {
+    public void beginIdentityVerification(String verificationId) {
         ensureNotWithdrawn();
+        if (identityVerifiedAt != null) {
+            throw new IllegalStateException("이미 본인인증이 완료된 회원입니다");
+        }
+        this.pendingPortoneIdentityVerificationId = requireText(verificationId, "본인인증 ID");
+    }
+
+    public void verifyIdentity(Instant verifiedAt, String verificationId) {
+        ensureNotWithdrawn();
+        if (identityVerifiedAt != null) {
+            if (verificationId.equals(portoneIdentityVerificationId)) {
+                return;
+            }
+            throw new IllegalStateException("이미 본인인증이 완료된 회원입니다");
+        }
+        if (!verificationId.equals(pendingPortoneIdentityVerificationId)) {
+            throw new IllegalArgumentException("이 계정에서 시작한 본인인증이 아닙니다");
+        }
         this.identityVerifiedAt = requireNonNull(verifiedAt, "본인인증 시각");
+        this.portoneIdentityVerificationId = requireText(verificationId, "본인인증 ID");
+        this.pendingPortoneIdentityVerificationId = null;
     }
 
     public void suspend() {
@@ -191,6 +216,10 @@ public class Member extends BaseTimeEntity {
 
     public boolean isActive() {
         return status == MemberStatus.ACTIVE;
+    }
+
+    public boolean isIdentityVerified() {
+        return identityVerifiedAt != null;
     }
 
     public boolean isAdmin() {

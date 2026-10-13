@@ -15,6 +15,7 @@ public class LiveSessionPoller {
     private final SessionQueryService sessionQueryService;
     private final LiveSessionStartService sessionStartService;
     private final LiveRoundSchedulerService roundSchedulerService;
+    private final CompatibilityPreparationService compatibilityPreparationService;
     private final Clock clock;
 
     @Scheduled(fixedDelay = 5_000)
@@ -28,7 +29,11 @@ public class LiveSessionPoller {
         }
         for (Long sessionId : sessionQueryService.findSessionIdsDueForFirstRound(clock.instant())) {
             try {
-                roundSchedulerService.startSessionRounds(sessionId);
+                if (compatibilityPreparationService.isPrepared(sessionId)) {
+                    roundSchedulerService.startSessionRounds(sessionId);
+                } else {
+                    compatibilityPreparationService.requestPreparation(sessionId);
+                }
             } catch (RuntimeException e) {
                 log.error("First round start failed: sessionId={}", sessionId, e);
             }
