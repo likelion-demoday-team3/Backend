@@ -8,8 +8,3 @@ spring:
 app:
   cors:
     allowed-origins: http://localhost:3000
-  kakaopay:
-    # 카카오페이 결제창에서 돌아올 프론트 페이지. {orderId}는 주문 번호로 바뀐다
-    approval-url: http://localhost:3000/shop/payment/{orderId}/success
-    cancel-url: http://localhost:3000/shop/payment/{orderId}/cancel
-    fail-url: http://localhost:3000/shop/payment/{orderId}/fail
