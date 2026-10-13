@@ -21,3 +21,9 @@ app:
     signup-ttl: 30m
   live:
         round-duration-seconds: 180
+  kakaopay:
+    base-url: https://open-api.kakaopay.com
+    secret-key: ${KAKAOPAY_SECRET_KEY:}
+    cid: ${KAKAOPAY_CID:TC0ONETIME}   # TC0ONETIME = 테스트 결제 (실제 돈이 빠지지 않음)
+  payment:
+    refund-window: 7d

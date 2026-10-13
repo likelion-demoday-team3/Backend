@@ -76,6 +76,18 @@ public record GemCommand(
                 "COMPLETION_REFUND:s" + sessionId + ":m" + memberId);
     }
 
+    /** 보석 구매. 결제당 한 번 */
+    public static GemCommand gemPurchase(Long memberId, Long paymentId, int amount) {
+        return new GemCommand(memberId, GemTransactionType.GEM_PURCHASE, amount, null, paymentId, null,
+                "GEM_PURCHASE:p" + paymentId);
+    }
+
+    /** 구매 환불 (지급했던 보석 회수). 결제당 한 번 */
+    public static GemCommand purchaseRefund(Long memberId, Long paymentId, int amount) {
+        return new GemCommand(memberId, GemTransactionType.PURCHASE_REFUND, amount, null, paymentId, null,
+                "PURCHASE_REFUND:p" + paymentId);
+    }
+
     /** 운영자 지급. requestId는 운영자 요청마다 새로 만든 값 (예: UUID) */
     public static GemCommand adminGrant(Long memberId, int amount, String memo, String requestId) {
         return new GemCommand(memberId, GemTransactionType.ADMIN_GRANT, amount, null, null, memo,
