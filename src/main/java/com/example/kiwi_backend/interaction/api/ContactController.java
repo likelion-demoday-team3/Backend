@@ -15,6 +15,14 @@ import org.springframework.web.bind.annotation.*;
 public class ContactController {
     private final ContactService contacts;
     private final PostSessionWindowService windows;
+    private final LiveSessionStateService liveState;
+
+    @GetMapping("/sessions/{sessionId}/live/state")
+    public ApiResponse<LiveSessionStateService.State> liveState(@PathVariable Long sessionId,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.ok(liveState.get(sessionId, user.memberId()));
+    }
+
     @PostMapping("/sessions/{sessionId}/contacts/send")
     public ApiResponse<ContactService.ShareView> send(@PathVariable Long sessionId, @AuthenticationPrincipal AuthUser user,
             @Valid @RequestBody Target request) {

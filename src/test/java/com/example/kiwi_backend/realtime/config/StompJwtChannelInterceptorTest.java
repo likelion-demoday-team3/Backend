@@ -45,4 +45,54 @@ class StompJwtChannelInterceptorTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("WebSocket access token is required");
     }
+
+    @Test
+    void authenticatedClientCanSendOnlyToApplicationHandlers() {
+        Message<byte[]> message = clientMessage(StompCommand.SEND, "/app/live/join", new AuthUser(101L, "USER"));
+
+        assertThat(interceptor.preSend(message, channel)).isSameAs(message);
+    }
+
+    @Test
+    void authenticatedClientCannotSendDirectlyToBrokerTopics() {
+        Message<byte[]> message = clientMessage(StompCommand.SEND, "/topic/live/round-assigned", new AuthUser(101L, "USER"));
+
+        assertThatThrownBy(() -> interceptor.preSend(message, channel))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("WebSocket destination is not allowed");
+    }
+
+    @Test
+    void authenticatedClientCanSubscribeToOwnUserQueue() {
+        Message<byte[]> message = clientMessage(StompCommand.SUBSCRIBE, "/user/queue/live/round-assigned", new AuthUser(101L, "USER"));
+
+        assertThat(interceptor.preSend(message, channel)).isSameAs(message);
+    }
+
+    @Test
+    void clientCannotSubscribeToTopicOrRawQueue() {
+        for (String destination : new String[]{"/topic/live/results", "/queue/live/results-ready", "/user/102/queue/live/results-ready"}) {
+            Message<byte[]> message = clientMessage(StompCommand.SUBSCRIBE, destination, new AuthUser(101L, "USER"));
+            assertThatThrownBy(() -> interceptor.preSend(message, channel))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("WebSocket destination is not allowed");
+        }
+    }
+
+    @Test
+    void sendWithoutAuthenticatedPrincipalFails() {
+        Message<byte[]> message = clientMessage(StompCommand.SEND, "/app/live/join", null);
+
+        assertThatThrownBy(() -> interceptor.preSend(message, channel))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("authenticated member is required");
+    }
+
+    private Message<byte[]> clientMessage(StompCommand command, String destination, AuthUser user) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
+        accessor.setDestination(destination);
+        accessor.setUser(user);
+        accessor.setLeaveMutable(true);
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
 }
