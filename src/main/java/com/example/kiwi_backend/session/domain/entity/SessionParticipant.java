@@ -125,4 +125,11 @@ public class SessionParticipant {
     public boolean isActive() {
         return status == ParticipantStatus.APPLIED || status == ParticipantStatus.ATTENDED;
     }
+
+    public void recordVote(Instant now) {
+        if (status != ParticipantStatus.ATTENDED || votedAt != null || now == null) {
+            throw new IllegalStateException("Only an attendee without a submitted vote can vote");
+        }
+        votedAt = now;
+    }
 }
