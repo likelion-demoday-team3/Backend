@@ -4,6 +4,7 @@ package com.example.kiwi_backend.contract.dto;
 public record MemberSummary(
         Long memberId,
         Gender gender,
-        boolean active
+        boolean active,
+        boolean identityVerified
 ) {
 }

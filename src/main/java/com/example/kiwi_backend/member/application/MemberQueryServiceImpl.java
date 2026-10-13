@@ -19,7 +19,8 @@ public class MemberQueryServiceImpl implements MemberQueryService {
     @Override
     public MemberSummary getSummary(Long memberId) {
         return memberRepository.findById(memberId)
-                .map(member -> new MemberSummary(member.getId(), member.getGender(), member.isActive()))
+                .map(member -> new MemberSummary(member.getId(), member.getGender(), member.isActive(),
+                        member.isIdentityVerified()))
                 .orElseThrow(() -> new NotFoundException("회원을 찾을 수 없습니다"));
     }
 }
