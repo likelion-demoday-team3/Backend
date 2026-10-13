@@ -48,6 +48,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.fail("LOGIN_FAILED", e.getMessage()));
     }
 
+    /** 카카오페이 등 외부 결제사 호출 실패 */
+    @ExceptionHandler(PaymentGatewayException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePaymentGateway(PaymentGatewayException e) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiResponse.fail("PAYMENT_FAILED", e.getMessage()));
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotReadable(HttpMessageNotReadableException e) {
         return ResponseEntity.badRequest()

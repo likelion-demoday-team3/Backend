@@ -65,3 +65,10 @@ app:
     api-secret: ${PORTONE_API_SECRET:}
     store-id: ${PORTONE_STORE_ID:}
     identity-channel-key: ${PORTONE_IDENTITY_CHANNEL_KEY:}
+
+  kakaopay:
+    base-url: https://open-api.kakaopay.com
+    secret-key: ${KAKAOPAY_SECRET_KEY:}
+    cid: ${KAKAOPAY_CID:TC0ONETIME}   # TC0ONETIME = 테스트 결제 (실제 돈이 빠지지 않음)
+  payment:
+    refund-window: 7d
