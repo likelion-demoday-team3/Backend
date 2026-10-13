@@ -3,6 +3,11 @@ package com.example.kiwi_backend.live.application;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import com.example.kiwi_backend.contract.command.SessionLiveStatusCommand;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.mockito.ArgumentCaptor;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -22,15 +27,33 @@ class LiveRoundSchedulerServiceTest {
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoundStateService liveRoundStateService = mock(LiveRoundStateService.class);
-    private final LiveVotingStartService liveVotingStartService = mock(LiveVotingStartService.class);
+    private final LiveHeartPhaseService liveHeartPhaseService = mock(LiveHeartPhaseService.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
+    private final SessionLiveStatusCommand statusCommand = mock(SessionLiveStatusCommand.class);
 
     private final LiveRoundSchedulerService service = new LiveRoundSchedulerService(
             liveRoundRepository,
             liveRoundStateService,
-            liveVotingStartService,
-            taskScheduler
+            liveHeartPhaseService,
+            taskScheduler,
+            statusCommand
     );
+
+    @BeforeEach
+    void beginTransaction() {
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void cleanupTransaction() {
+        TransactionSynchronizationManager.clearSynchronization();
+    }
+
+    private LiveRoundSchedulerResult startAndCommit() {
+        LiveRoundSchedulerResult result = service.startSessionRounds(10L);
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        return result;
+    }
 
     @Test
     void startSessionRoundsStartsFirstRoundAndSchedulesEnd() {
@@ -38,7 +61,7 @@ class LiveRoundSchedulerServiceTest {
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1), LiveRound.create(10L, 2)));
 
-        LiveRoundSchedulerResult result = service.startSessionRounds(10L);
+        LiveRoundSchedulerResult result = startAndCommit();
 
         assertThat(result.sessionId()).isEqualTo(10L);
         assertThat(result.firstRoundNumber()).isEqualTo(1);
@@ -56,7 +79,7 @@ class LiveRoundSchedulerServiceTest {
         when(liveRoundStateService.completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class)))
                 .thenReturn(new LiveRoundAdvanceResult(10L, 1, true, 2, LiveRoundPhase.BREAK, 60));
 
-        service.startSessionRounds(10L);
+        startAndCommit();
 
         ArgumentCaptor<Runnable> taskCaptor = ArgumentCaptor.forClass(Runnable.class);
         verify(taskScheduler).schedule(taskCaptor.capture(), any(Instant.class));
@@ -73,7 +96,7 @@ class LiveRoundSchedulerServiceTest {
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1)));
 
-        service.startSessionRounds(10L);
+        startAndCommit();
 
         assertThatThrownBy(() -> service.startSessionRounds(10L))
                 .isInstanceOf(IllegalStateException.class)
@@ -92,20 +115,20 @@ class LiveRoundSchedulerServiceTest {
     }
 
     @Test
-    void lastRoundStartsVotingInsteadOfSchedulingAnotherRound() {
+    void lastRoundStartsHeartsInsteadOfSchedulingAnotherRound() {
         ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1)));
         when(liveRoundStateService.completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class)))
                 .thenReturn(new LiveRoundAdvanceResult(10L, 1, false, null, LiveRoundPhase.FINISHED, 0));
 
-        service.startSessionRounds(10L);
+        startAndCommit();
         ArgumentCaptor<Runnable> taskCaptor = ArgumentCaptor.forClass(Runnable.class);
         verify(taskScheduler).schedule(taskCaptor.capture(), any(Instant.class));
 
         taskCaptor.getValue().run();
 
-        verify(liveVotingStartService).startVoting(eq(10L), any(Instant.class));
+        verify(liveHeartPhaseService).startHearts(eq(10L), any(Instant.class));
         verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
     }
 }

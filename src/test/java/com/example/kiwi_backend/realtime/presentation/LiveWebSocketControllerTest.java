@@ -2,7 +2,6 @@ package com.example.kiwi_backend.realtime.presentation;
 
 import com.example.kiwi_backend.common.security.AuthUser;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
-import com.example.kiwi_backend.live.application.LiveLobbyStartScheduler;
 import com.example.kiwi_backend.realtime.dto.LiveJoinRequest;
 import com.example.kiwi_backend.realtime.dto.LiveJoinResponse;
 import com.example.kiwi_backend.realtime.dto.LiveJoinStatus;
@@ -29,7 +28,6 @@ class LiveWebSocketControllerTest {
     private final RealtimeSignalService realtimeSignalService = mock(RealtimeSignalService.class);
     private final LiveJoinService liveJoinService = mock(LiveJoinService.class);
     private final LiveLobbyPresenceService lobbyPresenceService = mock(LiveLobbyPresenceService.class);
-    private final LiveLobbyStartScheduler lobbyStartScheduler = mock(LiveLobbyStartScheduler.class);
     private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider = mock(ObjectProvider.class);
     private final SessionQueryService sessionQueryService = mock(SessionQueryService.class);
     private final LiveWebSocketController controller = new LiveWebSocketController(
@@ -37,7 +35,6 @@ class LiveWebSocketControllerTest {
             realtimeSignalService,
             liveJoinService,
             lobbyPresenceService,
-            lobbyStartScheduler,
             sessionQueryServiceProvider
     );
 
@@ -64,7 +61,6 @@ class LiveWebSocketControllerTest {
 
         verify(lobbyPresenceService).join(10L, 101L, "ws-1",
                 Instant.parse("2026-10-09T11:55:00Z"), Instant.parse("2026-10-09T12:01:00Z"));
-        verify(lobbyStartScheduler).scheduleIfNeeded(10L, Instant.parse("2026-10-09T12:01:00Z"));
         verify(messagingTemplate).convertAndSendToUser("101", "/queue/live/joined", response);
     }
 

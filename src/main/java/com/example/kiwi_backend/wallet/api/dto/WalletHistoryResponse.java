@@ -30,6 +30,10 @@ public record WalletHistoryResponse(
 
     private static String describe(GemTransactionType type) {
         return switch (type) {
+            case HEART_SEND -> "하트 보내기";
+            case CONTACT_SEND -> "연락처 보내기";
+            case CONTACT_REQUEST -> "연락처 요청 수락";
+            case RESULT_PURCHASE -> "매칭 결과 열람";
             case ENTRY_FEE -> "세션 참가비";
             case ENTRY_FEE_REFUND -> "참가비 환불";
             case COMPLETION_REFUND -> "완주 반환";

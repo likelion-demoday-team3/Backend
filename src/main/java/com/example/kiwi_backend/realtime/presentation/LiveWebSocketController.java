@@ -2,7 +2,6 @@ package com.example.kiwi_backend.realtime.presentation;
 
 import com.example.kiwi_backend.common.security.AuthUser;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
-import com.example.kiwi_backend.live.application.LiveLobbyStartScheduler;
 import com.example.kiwi_backend.realtime.dto.LiveJoinRequest;
 import com.example.kiwi_backend.realtime.dto.SignalRequest;
 import com.example.kiwi_backend.realtime.service.LiveJoinService;
@@ -29,7 +28,6 @@ public class LiveWebSocketController {
     private final RealtimeSignalService realtimeSignalService;
     private final LiveJoinService liveJoinService;
     private final LiveLobbyPresenceService lobbyPresenceService;
-    private final LiveLobbyStartScheduler lobbyStartScheduler;
     private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider;
 
     @MessageMapping("/live/join")
@@ -50,7 +48,6 @@ public class LiveWebSocketController {
         Instant openAt = startTime.minus(Duration.ofMinutes(5));
         Instant closeAt = startTime.plus(Duration.ofMinutes(1));
         lobbyPresenceService.join(request.sessionId(), memberId, websocketSessionId, openAt, closeAt);
-        lobbyStartScheduler.scheduleIfNeeded(request.sessionId(), closeAt);
 
         messagingTemplate.convertAndSendToUser(
                 memberId.toString(),

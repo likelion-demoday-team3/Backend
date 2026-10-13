@@ -21,8 +21,8 @@ public class LiveRoundStateService {
     public LiveRoundStateResult startRound(Long sessionId, int roundNumber, Instant startedAt) {
         LiveRound round = findRound(sessionId, roundNumber);
         round.start(startedAt);
-        liveRoundBroadcastService.broadcastRoundAssignments(sessionId, roundNumber);
-        liveRoundBroadcastService.broadcastIdle(sessionId, roundNumber, DEFAULT_BREAK_SECONDS);
+        LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastRoundAssignments(sessionId, roundNumber));
+        LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastIdle(sessionId, roundNumber, DEFAULT_BREAK_SECONDS));
 
         return new LiveRoundStateResult(sessionId, roundNumber, round.getStatus(), true);
     }

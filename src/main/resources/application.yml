@@ -3,6 +3,7 @@ spring:
   application:
     name: kiwi_backend
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     properties:
@@ -11,8 +12,39 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:25}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:false}
+          starttls:
+            enable: ${SMTP_STARTTLS_ENABLE:true}
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false
 
 app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  mail:
+    from: ${SMTP_FROM:}
   crypto:
     key: ${APP_CRYPTO_KEY}
   jwt:
@@ -21,6 +53,19 @@ app:
     signup-ttl: 30m
   live:
         round-duration-seconds: 180
+  rtc:
+    turn-urls: ${RTC_TURN_URLS:}
+    turn-shared-secret: ${RTC_TURN_SHARED_SECRET:}
+    credential-ttl-seconds: ${RTC_TURN_CREDENTIAL_TTL_SECONDS:3600}
+    stun-urls: ${RTC_STUN_URLS:stun:stun.l.google.com:19302}
+  liner:
+    api-key: ${LINER_API_KEY:}
+    model: ${LINER_MODEL:liner-mark-1.3}
+  portone:
+    api-secret: ${PORTONE_API_SECRET:}
+    store-id: ${PORTONE_STORE_ID:}
+    identity-channel-key: ${PORTONE_IDENTITY_CHANNEL_KEY:}
+
   kakaopay:
     base-url: https://open-api.kakaopay.com
     secret-key: ${KAKAOPAY_SECRET_KEY:}

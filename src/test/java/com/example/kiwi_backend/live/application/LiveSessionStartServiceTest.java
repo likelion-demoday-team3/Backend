@@ -1,103 +1,82 @@
 package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionAttendanceCommand;
-import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.contract.dto.*;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.RotationTableGenerator;
 import com.example.kiwi_backend.realtime.service.LiveLobbyPresenceService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
-
-import java.util.List;
-import java.util.Set;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import java.time.*;
+import java.util.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 class LiveSessionStartServiceTest {
+    private final ObjectProvider<SessionQueryService> queries = mock(ObjectProvider.class);
+    private final ObjectProvider<SessionAttendanceCommand> commands = mock(ObjectProvider.class);
+    private final SessionQueryService query = mock(SessionQueryService.class);
+    private final SessionAttendanceCommand command = mock(SessionAttendanceCommand.class);
+    private final LiveLobbyPresenceService presence = mock(LiveLobbyPresenceService.class);
+    private final LiveScheduleService schedules = mock(LiveScheduleService.class);
+    private final LiveSessionNoticeService notices = mock(LiveSessionNoticeService.class);
+    private final Instant now = Instant.parse("2026-10-13T12:01:00Z");
+    private final LiveSessionStartService service = new LiveSessionStartService(queries, commands,
+            presence, Clock.fixed(now, ZoneOffset.UTC), new RotationTableGenerator(), schedules, notices);
+    private final List<LiveParticipant> participants = List.of(
+            new LiveParticipant(1L, Gender.MALE, "a"), new LiveParticipant(2L, Gender.MALE, "b"),
+            new LiveParticipant(3L, Gender.MALE, "c"), new LiveParticipant(4L, Gender.FEMALE, "d"),
+            new LiveParticipant(5L, Gender.FEMALE, "e"));
 
-    private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider = mock(ObjectProvider.class);
-    private final SessionQueryService sessionQueryService = mock(SessionQueryService.class);
-    private final ObjectProvider<SessionAttendanceCommand> attendanceCommandProvider = mock(ObjectProvider.class);
-    private final SessionAttendanceCommand attendanceCommand = mock(SessionAttendanceCommand.class);
-    private final LiveLobbyPresenceService lobbyPresenceService = mock(LiveLobbyPresenceService.class);
-    private final Clock clock = Clock.fixed(Instant.parse("2026-10-09T12:01:00Z"), ZoneOffset.UTC);
-    private final LiveScheduleService liveScheduleService = mock(LiveScheduleService.class);
-    private final LiveRoundSchedulerService liveRoundSchedulerService = mock(LiveRoundSchedulerService.class);
-
-    private final LiveSessionStartService service = new LiveSessionStartService(
-            sessionQueryServiceProvider,
-            attendanceCommandProvider,
-            lobbyPresenceService,
-            clock,
-            new RotationTableGenerator(),
-            liveScheduleService,
-            liveRoundSchedulerService
-    );
-
-    @Test
-    void startLiveSessionCreatesScheduleAndStartsScheduler() {
-        List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE),
-                new LiveParticipant(3L, Gender.MALE),
-                new LiveParticipant(10L, Gender.FEMALE),
-                new LiveParticipant(11L, Gender.FEMALE),
-                new LiveParticipant(12L, Gender.FEMALE)
-        );
-        when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
-        when(sessionQueryService.getStartTime(10L)).thenReturn(Instant.parse("2026-10-09T12:00:00Z"));
-        when(attendanceCommandProvider.getIfAvailable()).thenReturn(attendanceCommand);
-        when(lobbyPresenceService.closeLobby(10L)).thenReturn(Set.of(1L, 2L, 3L, 10L, 11L, 12L));
-        when(sessionQueryService.getLiveParticipants(10L)).thenReturn(participants);
-        when(liveScheduleService.createSchedule(org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.anyList()))
-                .thenReturn(new LiveScheduleResult(10L, 3, 9, 0));
-        when(liveRoundSchedulerService.startSessionRounds(10L))
-                .thenReturn(new LiveRoundSchedulerResult(10L, 1, 180));
-
-        LiveSessionStartResult result = service.startLiveSession(10L);
-
-        assertThat(result.sessionId()).isEqualTo(10L);
-        assertThat(result.participantCount()).isEqualTo(6);
-        assertThat(result.roundCount()).isEqualTo(3);
-        assertThat(result.roomCount()).isEqualTo(9);
-        assertThat(result.idleCount()).isZero();
-        assertThat(result.firstRoundNumber()).isEqualTo(1);
-        assertThat(result.roundDurationSeconds()).isEqualTo(180);
-
-        ArgumentCaptor<List<LiveRoundPlan>> plansCaptor = ArgumentCaptor.forClass(List.class);
-        verify(liveScheduleService).createSchedule(org.mockito.ArgumentMatchers.eq(10L), plansCaptor.capture());
-        assertThat(plansCaptor.getValue()).hasSize(3);
-        assertThat(plansCaptor.getValue().get(0).rooms()).hasSize(3);
-        assertThat(plansCaptor.getValue().get(0).idleMemberIds()).isEmpty();
-        verify(liveRoundSchedulerService).startSessionRounds(10L);
-        verify(attendanceCommand).finalizeAttendance(10L, Set.of(1L, 2L, 3L, 10L, 11L, 12L));
+    @BeforeEach
+    void setup() {
+        when(queries.getIfAvailable()).thenReturn(query);
+        when(commands.getIfAvailable()).thenReturn(command);
+        when(query.getStartTime(10L)).thenReturn(now.minusSeconds(60));
+        when(presence.closeLobby(10L)).thenReturn(Set.of(1L, 2L, 3L, 4L, 5L));
     }
 
     @Test
-    void startLiveSessionRejectsMissingSessionQueryService() {
-        when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(null);
-
-        assertThatThrownBy(() -> service.startLiveSession(10L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("SessionQueryService 구현체가 필요합니다");
+    void savesAttendanceSnapshotAndAnnouncesScheduledStart() {
+        when(command.finalizeAttendance(eq(10L), anySet()))
+                .thenReturn(AttendanceResult.proceeded(10L, participants, now.plusSeconds(30)));
+        service.startLiveSession(10L);
+        verify(schedules).createSchedule(eq(10L), argThat(plans -> plans.size() == 3
+                && plans.stream().allMatch(p -> p.rooms().size() == 2 && p.idleMemberIds().size() == 1)));
+        verify(notices).startingSoonAfterCommit(10L, participants, now.plusSeconds(30));
+        verify(query, never()).getLiveParticipants(anyLong());
     }
 
     @Test
-    void startLiveSessionRejectsEarlyLobbyClose() {
-        when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
-        when(sessionQueryService.getStartTime(10L)).thenReturn(Instant.parse("2026-10-09T12:00:01Z"));
+    void cancellationDoesNotGenerateSchedule() {
+        when(command.finalizeAttendance(eq(10L), anySet())).thenReturn(AttendanceResult.cancelled(10L));
+        service.startLiveSession(10L);
+        verifyNoInteractions(schedules);
+        verify(notices).cancelledAfterCommit(10L, Set.of(1L, 2L, 3L, 4L, 5L));
+    }
 
-        assertThatThrownBy(() -> service.startLiveSession(10L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("로비 마감 시각 전에는 세션을 시작할 수 없습니다");
-        org.mockito.Mockito.verifyNoInteractions(lobbyPresenceService);
+    @Test
+    void repeatedCloseDoesNotSaveOrNotifyAgain() {
+        when(command.finalizeAttendance(eq(10L), anySet())).thenReturn(AttendanceResult.alreadyProcessed(10L));
+        service.startLiveSession(10L);
+        verifyNoInteractions(schedules, notices);
+    }
+
+    @Test
+    void earlyRequestDoesNotFreezePresence() {
+        when(query.getStartTime(10L)).thenReturn(now);
+        assertThatThrownBy(() -> service.startLiveSession(10L)).isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(presence, command, schedules, notices);
+    }
+
+    @Test
+    void saveFailureDoesNotAnnounceStart() {
+        when(command.finalizeAttendance(eq(10L), anySet()))
+                .thenReturn(AttendanceResult.proceeded(10L, participants, now.plusSeconds(30)));
+        when(schedules.createSchedule(anyLong(), anyList())).thenThrow(new IllegalStateException("database failure"));
+        assertThatThrownBy(() -> service.startLiveSession(10L)).hasMessage("database failure");
+        verifyNoInteractions(notices);
     }
 }
