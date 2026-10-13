@@ -11,6 +11,7 @@ import com.example.kiwi_backend.member.api.dto.PasswordChangeRequest;
 import com.example.kiwi_backend.member.api.dto.PhoneNumberRequest;
 import com.example.kiwi_backend.member.application.MemberService;
 import com.example.kiwi_backend.member.application.PortOneIdentityVerificationService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/members/my")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class MemberController {
 
     private final MemberService memberService;
