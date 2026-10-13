@@ -1,0 +1,64 @@
+# 운영 배포용 (EC2 한 대). 이 폴더에서 실행한다:
+#   cp .env.example .env   # 값 채우기
+#   docker compose up -d --build
+#
+# app   : Spring Boot (외부에 직접 열지 않음)
+# db    : PostgreSQL (외부에 열지 않음, 데이터는 pgdata 볼륨)
+# caddy : 80/443을 받아 HTTPS 인증서를 자동 발급하고 app으로 넘긴다 (WebSocket 포함)
+name: kiwi
+
+services:
+  app:
+    build: ..
+    image: kiwi-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Caddy 뒤에 있으므로 X-Forwarded-* 헤더로 원래 https 주소를 알아낸다
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      TZ: UTC
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

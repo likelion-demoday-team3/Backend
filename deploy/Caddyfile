@@ -1,0 +1,7 @@
+# API_DOMAIN(예: api.kiwi.site)으로 들어온 요청을 백엔드로 넘긴다.
+# 처음 실행할 때 Let's Encrypt 인증서를 자동으로 받고, 만료 전에 알아서 갱신한다.
+# WebSocket(/ws/**) 업그레이드도 별도 설정 없이 그대로 전달된다.
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy app:8080
+}

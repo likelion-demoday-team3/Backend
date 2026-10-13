@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 배포 비밀값 ###
+deploy/.env
