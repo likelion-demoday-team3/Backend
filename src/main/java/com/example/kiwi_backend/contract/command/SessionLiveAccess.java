@@ -9,4 +9,8 @@ public interface SessionLiveAccess {
     LiveSessionContext lock(Long sessionId);
     Instant startHearts(Long sessionId, Instant now);
     List<Long> findHeartSessionsDue(Instant now);
+    List<Long> findVotingSessionsDue(Instant now);
+    boolean hasVoted(Long sessionId, Long memberId);
+    void recordVote(Long sessionId, Long memberId, Instant now);
+    void finishVoting(Long sessionId, Instant now);
 }

@@ -186,6 +186,16 @@ public class DatingSession extends BaseTimeEntity {
         return phaseEndsAt;
     }
 
+    public void finishVoting(Instant now) {
+        if (status != SessionStatus.IN_PROGRESS || liveStatus != LiveStatus.VOTING
+                || phaseEndsAt == null || now.isBefore(phaseEndsAt)) {
+            throw new IllegalStateException("Voting is not due to close");
+        }
+        transitionTo(SessionStatus.COMPLETED);
+        liveStatus = LiveStatus.RESULT_AND_SHARE;
+        phaseEndsAt = null;
+    }
+
     public void cancel() {
         transitionTo(SessionStatus.CANCELLED);
     }
