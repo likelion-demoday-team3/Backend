@@ -169,11 +169,20 @@ public class DatingSession extends BaseTimeEntity {
         if (liveStatus == LiveStatus.VOTING) {
             return phaseEndsAt;
         }
-        if (liveStatus != LiveStatus.IN_ROUND) {
+        if (liveStatus != LiveStatus.HEART || phaseEndsAt == null || startedAt.isBefore(phaseEndsAt)) {
             throw new IllegalStateException("라운드가 끝난 뒤에만 투표를 시작할 수 있습니다");
         }
         this.liveStatus = LiveStatus.VOTING;
-        this.phaseEndsAt = startedAt.plusSeconds(votingDurationSeconds);
+        this.phaseEndsAt = startedAt.plusSeconds(120);
+        return phaseEndsAt;
+    }
+
+    public Instant startHearts(Instant now) {
+        if (status != SessionStatus.IN_PROGRESS || liveStatus != LiveStatus.IN_ROUND || now == null) {
+            throw new IllegalStateException("Hearts can start only after rounds");
+        }
+        this.liveStatus = LiveStatus.HEART;
+        this.phaseEndsAt = now.plusSeconds(60);
         return phaseEndsAt;
     }
 

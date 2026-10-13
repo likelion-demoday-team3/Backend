@@ -27,14 +27,14 @@ class LiveRoundSchedulerServiceTest {
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoundStateService liveRoundStateService = mock(LiveRoundStateService.class);
-    private final LiveVotingStartService liveVotingStartService = mock(LiveVotingStartService.class);
+    private final LiveHeartPhaseService liveHeartPhaseService = mock(LiveHeartPhaseService.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
     private final SessionLiveStatusCommand statusCommand = mock(SessionLiveStatusCommand.class);
 
     private final LiveRoundSchedulerService service = new LiveRoundSchedulerService(
             liveRoundRepository,
             liveRoundStateService,
-            liveVotingStartService,
+            liveHeartPhaseService,
             taskScheduler,
             statusCommand
     );
@@ -115,7 +115,7 @@ class LiveRoundSchedulerServiceTest {
     }
 
     @Test
-    void lastRoundStartsVotingInsteadOfSchedulingAnotherRound() {
+    void lastRoundStartsHeartsInsteadOfSchedulingAnotherRound() {
         ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1)));
@@ -128,7 +128,7 @@ class LiveRoundSchedulerServiceTest {
 
         taskCaptor.getValue().run();
 
-        verify(liveVotingStartService).startVoting(eq(10L), any(Instant.class));
+        verify(liveHeartPhaseService).startHearts(eq(10L), any(Instant.class));
         verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
     }
 }
