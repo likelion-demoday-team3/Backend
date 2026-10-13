@@ -21,6 +21,7 @@ public class VoteService {
     private final GemWallet wallet;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final ResultWindowAccess resultWindow;
 
     @Transactional
     public Submission submit(Long sessionId, Long memberId, List<Long> targets) {
@@ -80,6 +81,7 @@ public class VoteService {
 
     @Transactional
     public Summary summary(Long sessionId, Long memberId) {
+        resultWindow.requireResultOpen(sessionId, memberId);
         var context = access.lock(sessionId);
         context.requireParticipant(memberId);
         if (context.phase() != LiveSessionContext.Phase.RESULT_AND_SHARE) {
