@@ -40,4 +40,28 @@ public class SessionLiveAccessImpl implements SessionLiveAccess {
     public List<Long> findHeartSessionsDue(Instant now) {
         return sessions.findIdsDueForFirstRound(SessionStatus.IN_PROGRESS, LiveStatus.HEART, now);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> findVotingSessionsDue(Instant now) {
+        return sessions.findIdsDueForFirstRound(SessionStatus.IN_PROGRESS, LiveStatus.VOTING, now);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean hasVoted(Long sessionId, Long memberId) {
+        return participants.findBySessionIdAndMemberId(sessionId, memberId).orElseThrow().getVotedAt() != null;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordVote(Long sessionId, Long memberId, Instant now) {
+        participants.findBySessionIdAndMemberId(sessionId, memberId).orElseThrow().recordVote(now);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void finishVoting(Long sessionId, Instant now) {
+        sessions.findByIdForUpdate(sessionId).orElseThrow().finishVoting(now);
+    }
 }
