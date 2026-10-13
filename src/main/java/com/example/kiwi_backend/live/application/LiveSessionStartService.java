@@ -2,6 +2,7 @@ package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionAttendanceCommand;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
+import com.example.kiwi_backend.contract.dto.AttendanceResult;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.*;
 import com.example.kiwi_backend.realtime.service.LiveLobbyPresenceService;
@@ -25,10 +26,10 @@ public class LiveSessionStartService {
     private final Clock clock;
     private final RotationTableGenerator rotationTableGenerator;
     private final LiveScheduleService liveScheduleService;
-    private final LiveRoundSchedulerService liveRoundSchedulerService;
+    private final LiveSessionNoticeService noticeService;
 
     @Transactional
-    public LiveSessionStartResult startLiveSession(Long sessionId) {
+    public void startLiveSession(Long sessionId) {
         if (sessionId == null) {
             throw new IllegalArgumentException("sessionId must not be null");
         }
@@ -50,29 +51,23 @@ public class LiveSessionStartService {
         if (attendanceCommand == null) {
             throw new IllegalStateException("SessionAttendanceCommand 구현체가 필요합니다");
         }
-        attendanceCommand.finalizeAttendance(sessionId, lobbyPresenceService.closeLobby(sessionId));
-
-        List<LiveParticipant> participants =
-                sessionQueryService.getLiveParticipants(sessionId);
-//        참가자 명단 가져오기
+        var connected = lobbyPresenceService.closeLobby(sessionId);
+        AttendanceResult attendance = attendanceCommand.finalizeAttendance(sessionId, connected);
+        if (attendance.alreadyProcessed()) {
+            return;
+        }
+        if (!attendance.proceed()) {
+            noticeService.cancelledAfterCommit(sessionId, connected);
+            return;
+        }
+        List<LiveParticipant> participants = attendance.attendees();
 
         RotationTable rotationTable = rotationTableGenerator.generate(sessionId, participants);
-        LiveScheduleResult scheduleResult = liveScheduleService.createSchedule(
+        liveScheduleService.createSchedule(
                 sessionId,
                 toRoundPlans(rotationTable.rounds())
         );
-        LiveRoundSchedulerResult schedulerResult = liveRoundSchedulerService.startSessionRounds(sessionId);
-//        DB에 저장
-
-        return new LiveSessionStartResult(
-                sessionId,
-                participants.size(),
-                scheduleResult.roundCount(),
-                scheduleResult.roomCount(),
-                scheduleResult.idleCount(),
-                schedulerResult.firstRoundNumber(),
-                schedulerResult.roundDurationSeconds()
-        );
+        noticeService.startingSoonAfterCommit(sessionId, participants, attendance.firstRoundAt());
     }
 
     private List<LiveRoundPlan> toRoundPlans(List<RoundAssignment> assignments) {

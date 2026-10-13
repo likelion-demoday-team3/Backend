@@ -4,6 +4,10 @@ import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronization;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -16,6 +20,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class LiveRoundStateServiceTest {
+
+    @BeforeEach
+    void begin() { TransactionSynchronizationManager.initSynchronization(); }
+
+    @AfterEach
+    void cleanup() { TransactionSynchronizationManager.clearSynchronization(); }
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoundBroadcastService liveRoundBroadcastService = mock(LiveRoundBroadcastService.class);
@@ -39,6 +49,9 @@ class LiveRoundStateServiceTest {
         assertThat(round.getStartedAt()).isEqualTo(startedAt);
         assertThat(result.status()).isEqualTo(LiveRoundStatus.IN_PROGRESS);
         assertThat(result.assignmentBroadcasted()).isTrue();
+
+        org.mockito.Mockito.verifyNoInteractions(liveRoundBroadcastService);
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
 
         verify(liveRoundBroadcastService).broadcastRoundAssignments(10L, 1);
         verify(liveRoundBroadcastService).broadcastIdle(10L, 1, 60);
