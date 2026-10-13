@@ -6,6 +6,7 @@ After all rounds complete, clients receive /user/queue/live/hearts-started:
 { sessionId, heartsEndsAt }. Move to the lobby and stop the previous voice connection.
 The backend opens a 60-second window. It rejects requests at or after the deadline,
 even when the periodic transition has not run yet. Voting opens for 120 seconds after hearts close.
+After voting closes, mutual first choices are matched and the free couple count is sent.
 
 ## HTTP (JWT required)
 
@@ -37,5 +38,4 @@ Insufficient balance rolls back the heart.
 
 ## Limits
 
-This PR does not implement vote submission/closing or results (next PR).
 H2 tests do not replace PostgreSQL migration/concurrency verification.

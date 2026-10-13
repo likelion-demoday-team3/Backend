@@ -2,11 +2,14 @@ package com.example.kiwi_backend.realtime.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -15,6 +18,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 //    실시간 서버 설정
 
     private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
+
+    @Value("${app.cors.allowed-origins}")
+    private List<String> allowedOrigins;
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
@@ -36,6 +42,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
 //                프론트는 ws://서버주소/ws 로 연결해야한다.
-                .setAllowedOriginPatterns("*");
+                .setAllowedOrigins(allowedOrigins.toArray(String[]::new));
     }
 }

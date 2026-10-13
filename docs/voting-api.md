@@ -15,7 +15,8 @@ Submission records votedAt and applies the configured completion reward once thr
 At the deadline the server closes voting, matches mutual first choices only, and persists normalized pairs.
 A zero-vote session completes with zero couples.
 Clients receive /user/queue/live/results-ready: { sessionId, coupleCount } after commit.
-No other people's rankings are included in this free response.
-Automatic matched contact sharing will subscribe to MatchingCompletedEvent in the next PR.
+No other people's rankings are included in this free response. Mutual first-choice
+partners receive automatic contact-sharing grants after matching; details are in
+contact-history-api.md.
 
 No new vote/match tables are introduced: they already exist in the initial migration.
