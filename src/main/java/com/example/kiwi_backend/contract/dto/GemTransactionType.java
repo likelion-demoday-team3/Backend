@@ -11,6 +11,7 @@ public enum GemTransactionType {
     HEART_SEND(false, Reference.SESSION),
     CONTACT_SEND(false, Reference.SESSION),
     CONTACT_REQUEST(false, Reference.SESSION),
+    RESULT_PURCHASE(false, Reference.SESSION),
 
     ENTRY_FEE(false, Reference.SESSION),           // 세션 신청 참가비
     ENTRY_FEE_REFUND(true, Reference.SESSION),     // 본인 취소, 세션 취소 환불
