@@ -57,6 +57,8 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/start").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/scheduler/start").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/rounds/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class);
 

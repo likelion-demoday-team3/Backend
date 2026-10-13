@@ -111,8 +111,8 @@ class LiveJoinServiceTest {
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
 
         assertThatThrownBy(() -> service.join(10L, 999L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("신청한 참가자만 입장할 수 있습니다");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("입장 불가합니다");
         verifyNoInteractions(liveRoundRepository);
     }
 

@@ -2,6 +2,7 @@ package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionLivePhaseCommand;
 import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -34,8 +35,8 @@ class LiveVotingStartServiceTest {
         when(phaseCommandProvider.getIfAvailable()).thenReturn(phaseCommand);
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
         when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
-                new LiveParticipant(101L, Gender.MALE),
-                new LiveParticipant(201L, Gender.FEMALE)));
+                new LiveParticipant(101L, Gender.MALE, "test-alias"),
+                new LiveParticipant(201L, Gender.FEMALE, "test-alias")));
         when(phaseCommand.startVoting(10L, startedAt)).thenReturn(endsAt);
 
         service.startVoting(10L, startedAt);

@@ -10,6 +10,7 @@ import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
+import com.example.kiwi_backend.session.domain.entity.LiveStatus;
 import com.example.kiwi_backend.session.domain.entity.ParticipantStatus;
 import com.example.kiwi_backend.session.domain.entity.SessionParticipant;
 import com.example.kiwi_backend.session.domain.entity.SessionStatus;
@@ -103,6 +104,11 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
     public void markRoundsStarted(Long sessionId) {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+        if (session.getLiveStatus() != LiveStatus.WAITING
+                || session.getPhaseEndsAt() == null
+                || clock.instant().isBefore(session.getPhaseEndsAt())) {
+            throw new IllegalStateException("First round is not due or has already started");
+        }
         session.markRoundsStarted();
     }
 

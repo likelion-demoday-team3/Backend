@@ -1,7 +1,6 @@
 package com.example.kiwi_backend.live.api;
 
 import com.example.kiwi_backend.common.response.ApiResponse;
-import com.example.kiwi_backend.live.api.dto.LiveSessionStartResponse;
 import com.example.kiwi_backend.live.application.LiveSessionStartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,9 +16,8 @@ public class LiveSessionStartController {
     private final LiveSessionStartService liveSessionStartService;
 
     @PostMapping("/start")
-    public ApiResponse<LiveSessionStartResponse> startLiveSession(@PathVariable Long sessionId) {
-        return ApiResponse.ok(LiveSessionStartResponse.from(
-                liveSessionStartService.startLiveSession(sessionId)
-        ));
+    public ApiResponse<Void> startLiveSession(@PathVariable Long sessionId) {
+        liveSessionStartService.startLiveSession(sessionId);
+        return ApiResponse.ok();
     }
 }

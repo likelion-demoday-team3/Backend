@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.live.domain;
 
 import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -17,12 +18,12 @@ class RotationTableGeneratorTest {
     @Test
     void generateCreatesAllPairsWithoutDuplicatesWhenCountsAreBalanced() {
         List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE),
-                new LiveParticipant(3L, Gender.MALE),
-                new LiveParticipant(10L, Gender.FEMALE),
-                new LiveParticipant(11L, Gender.FEMALE),
-                new LiveParticipant(12L, Gender.FEMALE)
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(2L, Gender.MALE, "test-alias"),
+                new LiveParticipant(3L, Gender.MALE, "test-alias"),
+                new LiveParticipant(10L, Gender.FEMALE, "test-alias"),
+                new LiveParticipant(11L, Gender.FEMALE, "test-alias"),
+                new LiveParticipant(12L, Gender.FEMALE, "test-alias")
         );
 
         RotationTable table = generator.generate(1L, participants);
@@ -51,13 +52,13 @@ class RotationTableGeneratorTest {
         int expectedPairCount = maleCount * femaleCount;
 
         List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE),
-                new LiveParticipant(3L, Gender.MALE),
-                new LiveParticipant(4L, Gender.MALE),
-                new LiveParticipant(10L, Gender.FEMALE),
-                new LiveParticipant(11L, Gender.FEMALE),
-                new LiveParticipant(12L, Gender.FEMALE)
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(2L, Gender.MALE, "test-alias"),
+                new LiveParticipant(3L, Gender.MALE, "test-alias"),
+                new LiveParticipant(4L, Gender.MALE, "test-alias"),
+                new LiveParticipant(10L, Gender.FEMALE, "test-alias"),
+                new LiveParticipant(11L, Gender.FEMALE, "test-alias"),
+                new LiveParticipant(12L, Gender.FEMALE, "test-alias")
         );
 
         RotationTable table = generator.generate(1L, participants);
@@ -82,8 +83,8 @@ class RotationTableGeneratorTest {
     @Test
     void generateRejectsSessionWhenParticipantCountIsLessThanFive() {
         List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE)
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(2L, Gender.MALE, "test-alias")
         );
 
         assertThatThrownBy(() -> generator.generate(1L, participants))
@@ -94,11 +95,11 @@ class RotationTableGeneratorTest {
     @Test
     void generateRejectsSessionWithoutBothGenders() {
         List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE),
-                new LiveParticipant(3L, Gender.MALE),
-                new LiveParticipant(4L, Gender.MALE),
-                new LiveParticipant(5L, Gender.MALE)
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(2L, Gender.MALE, "test-alias"),
+                new LiveParticipant(3L, Gender.MALE, "test-alias"),
+                new LiveParticipant(4L, Gender.MALE, "test-alias"),
+                new LiveParticipant(5L, Gender.MALE, "test-alias")
         );
 
         assertThatThrownBy(() -> generator.generate(1L, participants))
@@ -109,11 +110,11 @@ class RotationTableGeneratorTest {
     @Test
     void generateRejectsSessionWhenGenderCountDifferenceIsGreaterThanOne() {
         List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE),
-                new LiveParticipant(3L, Gender.MALE),
-                new LiveParticipant(4L, Gender.MALE),
-                new LiveParticipant(10L, Gender.FEMALE)
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(2L, Gender.MALE, "test-alias"),
+                new LiveParticipant(3L, Gender.MALE, "test-alias"),
+                new LiveParticipant(4L, Gender.MALE, "test-alias"),
+                new LiveParticipant(10L, Gender.FEMALE, "test-alias")
         );
 
         assertThatThrownBy(() -> generator.generate(1L, participants))
@@ -124,11 +125,11 @@ class RotationTableGeneratorTest {
     @Test
     void generateRejectsDuplicateParticipants() {
         List<LiveParticipant> participants = List.of(
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(1L, Gender.MALE),
-                new LiveParticipant(2L, Gender.MALE),
-                new LiveParticipant(10L, Gender.FEMALE),
-                new LiveParticipant(11L, Gender.FEMALE)
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(1L, Gender.MALE, "test-alias"),
+                new LiveParticipant(2L, Gender.MALE, "test-alias"),
+                new LiveParticipant(10L, Gender.FEMALE, "test-alias"),
+                new LiveParticipant(11L, Gender.FEMALE, "test-alias")
         );
 
         assertThatThrownBy(() -> generator.generate(1L, participants))
