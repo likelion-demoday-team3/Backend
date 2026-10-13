@@ -61,7 +61,7 @@ class PaymentServiceTest {
 
     @Test
     void readySavesPaymentWithTidAndReturnsRedirectUrls() {
-        when(memberQueryService.getSummary(MEMBER_ID)).thenReturn(new MemberSummary(MEMBER_ID, Gender.MALE, true));
+        when(memberQueryService.getSummary(MEMBER_ID)).thenReturn(new MemberSummary(MEMBER_ID, Gender.MALE, true, true));
         when(productRepository.findById(5L)).thenReturn(Optional.of(product()));
         when(paymentRepository.save(any())).thenAnswer(invocation -> withId(invocation.getArgument(0)));
         when(kakaoPayClient.ready(anyString(), eq(MEMBER_ID), eq("보석 30개"), eq(3000)))
@@ -205,9 +205,34 @@ class PaymentServiceTest {
         payment.markPaid(NOW.minus(Duration.ofDays(8)));
         givenLocked(payment);
 
-        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("환불 기간이 지났습니다");
 
         verifyNoInteractions(gemWallet, kakaoPayClient);
+    }
+
+    @Test
+    void refundAgainSaysAlreadyRefunded() {
+        Payment payment = readyPayment();
+        payment.markPaid(NOW.minus(Duration.ofDays(1)));
+        payment.markRefunded(NOW, "사용자 환불 요청");
+        givenLocked(payment);
+
+        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("이미 환불된 결제입니다");
+
+        verifyNoInteractions(gemWallet, kakaoPayClient);
+    }
+
+    @Test
+    void refundUnpaidSaysNotCompleted() {
+        givenLocked(readyPayment());
+
+        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("결제가 완료되지 않아 환불할 수 없습니다");
     }
 
     // ===== 결제창 취소 =====

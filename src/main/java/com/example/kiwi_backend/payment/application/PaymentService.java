@@ -198,7 +198,7 @@ public class PaymentService {
                 Payment payment = findOwnedForUpdate(memberId, orderId);
                 Instant now = clock.instant();
                 if (!payment.isRefundable(now, refundWindow)) {
-                    throw new IllegalStateException("환불할 수 없는 결제입니다 (결제 후 " + refundWindow.toDays() + "일 이내만 가능)");
+                    throw new IllegalStateException(refundRejectReason(payment));
                 }
 
                 GemResult result;
@@ -254,6 +254,15 @@ public class PaymentService {
         return paymentRepository.findByOrderIdForUpdate(orderId)
                 .filter(payment -> payment.isOwnedBy(memberId))
                 .orElseThrow(() -> new NotFoundException("결제를 찾을 수 없습니다"));
+    }
+
+    /** 환불 거절 사유. 사용자에게 그대로 보이므로 상태별로 나눠서 알려준다 */
+    private String refundRejectReason(Payment payment) {
+        return switch (payment.getStatus()) {
+            case REFUNDED -> "이미 환불된 결제입니다";
+            case PAID -> "환불 기간이 지났습니다 (결제 후 " + refundWindow.toDays() + "일 이내만 가능)";
+            case READY, FAILED -> "결제가 완료되지 않아 환불할 수 없습니다";
+        };
     }
 
     private static GemCommand purchaseCommand(Payment payment) {
