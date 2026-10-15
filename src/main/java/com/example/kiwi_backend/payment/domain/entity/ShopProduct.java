@@ -40,6 +40,9 @@ public class ShopProduct {
     @Column(nullable = false)
     private int price;
 
+    /** 할인 가격 (원), null이면 할인 없음 */
+    private Integer salePrice;
+
     /** 판매 중 여부 */
     @Column(nullable = false)
     private boolean active;
@@ -63,6 +66,23 @@ public class ShopProduct {
         product.price = price;
         product.active = true;
         return product;
+    }
+
+    /** 할인 적용. null이면 할인 해제 */
+    public void changeSalePrice(Integer salePrice) {
+        if (salePrice != null && (salePrice <= 0 || salePrice >= price)) {
+            throw new IllegalArgumentException("할인 가격은 0보다 크고 원래 가격보다 작아야 합니다");
+        }
+        this.salePrice = salePrice;
+    }
+
+    public boolean isOnSale() {
+        return salePrice != null;
+    }
+
+    /** 실제 결제 금액. 상점 표시와 결제 준비가 모두 이 값을 쓴다 */
+    public int currentPrice() {
+        return isOnSale() ? salePrice : price;
     }
 
     /** 구매 시 지급하는 보석 (기본 + 보너스) */

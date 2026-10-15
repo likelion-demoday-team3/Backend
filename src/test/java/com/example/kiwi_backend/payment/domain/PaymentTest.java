@@ -32,6 +32,25 @@ class PaymentTest {
     }
 
     @Test
+    void readyUsesSalePriceWhenProductIsOnSale() {
+        ShopProduct product = product(10, 0, 1000);
+        product.changeSalePrice(800);
+
+        assertThat(Payment.ready(1L, product, "order-1").getAmount()).isEqualTo(800);
+
+        product.changeSalePrice(null);
+        assertThat(Payment.ready(1L, product, "order-2").getAmount()).isEqualTo(1000);
+    }
+
+    @Test
+    void salePriceMustBeLowerThanPrice() {
+        ShopProduct product = product(10, 0, 1000);
+
+        assertThatThrownBy(() -> product.changeSalePrice(1000)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> product.changeSalePrice(0)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void paidPaymentIsRefundableOnlyWithinWindow() {
         Payment payment = Payment.ready(1L, product(10, 0, 1000), "order-1");
         payment.attachPaymentKey("T1");

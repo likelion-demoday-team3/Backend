@@ -82,7 +82,7 @@ public class Payment {
         payment.memberId = memberId;
         payment.productId = product.getId();
         payment.orderId = orderId;
-        payment.amount = product.getPrice();
+        payment.amount = product.currentPrice();
         payment.grantedGem = product.totalGem();
         payment.status = PaymentStatus.READY;
         return payment;
