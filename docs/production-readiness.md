@@ -20,7 +20,7 @@ SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, �
 
 WebRTC: `RTC_STUN_URLS`, `RTC_TURN_URLS`, `RTC_TURN_SHARED_SECRET`, 선택 `RTC_TURN_CREDENTIAL_TTL_SECONDS`. TURN 값은 자체 coturn 또는 선택한 TURN 호스팅 업체의 REST shared-secret 방식으로 맞춘다. TURN 미설정 시 STUN만 반환되므로 일부 모바일/회사망에서는 연결되지 않을 수 있다.
 
-카카오페이: `KAKAOPAY_SECRET_KEY`, 선택 `KAKAOPAY_CID` (기본 `TC0ONETIME` 테스트 결제), `FRONTEND_URL` (결제 후 돌아올 프론트 주소, 기본 `http://localhost:3000`).
+토스페이먼츠: `TOSS_SECRET_KEY`, `TOSS_CLIENT_KEY` (테스트 키면 실제 돈이 빠지지 않음), `FRONTEND_URL` (결제 후 돌아올 프론트 주소, 기본 `http://localhost:3000`).
 
 PortOne identity: `PORTONE_API_SECRET`은 서버에만 둔다. `PORTONE_STORE_ID`와 `PORTONE_IDENTITY_CHANNEL_KEY`는 PortOne 콘솔에서 확인한다. 인증 ID는 서버 endpoint가 발급하므로 프론트가 임의로 만들지 않는다.
 
@@ -33,7 +33,7 @@ PortOne identity: `PORTONE_API_SECRET`은 서버에만 둔다. `PORTONE_STORE_ID
 ## 아직 외부 계약·승인이 필요한 것
 
 - 본인인증: 실제 PortOne store/channel 및 V2 API Secret을 발급·설정하고 프론트 SDK와 end-to-end 테스트해야 한다.
-- 보석 결제: 카카오페이 단건 결제 API에 직접 연동했다(PortOne 미사용). 테스트 CID(`TC0ONETIME`)로 승인·환불까지 확인했고, 실결제는 카카오페이 계약 후 받은 CID로 `KAKAOPAY_CID`를 바꾼다. 카카오페이 개발자센터에 프론트 도메인을 사이트 도메인으로 등록해야 한다.
+- 보석 결제: 토스페이먼츠 결제 API에 직접 연동했다(PortOne 미사용). 프론트가 `POST /payments/toss/ready` 응답으로 토스 SDK 결제창을 열고, successUrl의 `paymentKey`/`orderId`/`amount`를 `POST /payments/toss/confirm`으로 넘긴다. 테스트 키로 프론트와 end-to-end 확인이 필요하고, 실결제는 계약 후 라이브 키로 바꾼다.
 - 학교 이메일 허용 도메인 목록은 실제 학생용 주소인지 학교별로 확인해야 한다.
 - 운영 배포·TLS·DB 백업 절차는 `docs/deploy-ec2.md`에 정리했다. SMTP/TURN/Liner 실계정 테스트, 개인정보 보유·삭제 정책 검증은 별도 완료가 필요하다.
 

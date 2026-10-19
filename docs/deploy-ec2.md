@@ -67,7 +67,7 @@ docker compose up -d --build
 | `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | `https://kiwi.site` (Vercel 주소. 끝에 `/` 없이) |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24` |
 | `JWT_SECRET`, `APP_CRYPTO_KEY` | 각각 `openssl rand -base64 32`. **한 번 정하면 바꾸지 않는다** (`APP_CRYPTO_KEY`를 바꾸면 암호화된 연락처를 읽을 수 없다) |
-| `KAKAOPAY_SECRET_KEY` | 카카오페이 Secret key |
+| `TOSS_SECRET_KEY`, `TOSS_CLIENT_KEY` | 토스페이먼츠 시크릿 키 / 클라이언트 키 (같은 쌍) |
 | `SMTP_*` | 운영 프로필은 실제 메일을 보낸다. 비어 있으면 가입 인증 메일이 나가지 않는다 |
 
 `.env`는 git에 올라가지 않는다. 값은 팀 비밀 저장소 등 안전한 곳에 따로 보관한다.
@@ -84,7 +84,7 @@ docker compose logs -f app                       # 앱 로그
 
 ## 6. 외부 서비스 설정
 
-- **카카오페이**: developers.kakaopay.com → 내 애플리케이션 → 플랫폼 → Web → 사이트 도메인에 프론트 주소(`https://kiwi.site`) 추가. 없으면 결제 준비가 400으로 실패한다
+- **토스페이먼츠**: developers.tosspayments.com → API 키에서 키 쌍 확인. 실결제는 상점 계약·심사 후 라이브 키를 받는다
 - **프론트(Vercel)**: API 주소 `https://api.kiwi.site`, WebSocket 주소 `wss://api.kiwi.site/ws`
 
 ## 7. 업데이트 배포
@@ -120,4 +120,4 @@ gunzip -c ~/kiwi-backups/kiwi-YYYYMMDDTHHMMSSZ.sql.gz | docker compose exec -T d
 
 - TURN 서버: 없으면 일부 모바일·회사망에서 영상 연결이 안 될 수 있다 (`RTC_TURN_*`, production-readiness.md 참고)
 - Swagger UI(`/swagger-ui`)가 공개되어 있다. 운영에서 숨길지 정한다
-- 카카오페이 실결제는 계약 후 받은 CID로 `KAKAOPAY_CID`를 바꾼다
+- 토스페이먼츠 실결제는 계약 후 받은 라이브 키로 `TOSS_SECRET_KEY`, `TOSS_CLIENT_KEY`를 바꾼다

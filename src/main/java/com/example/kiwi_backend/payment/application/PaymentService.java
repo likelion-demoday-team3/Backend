@@ -16,9 +16,9 @@ import com.example.kiwi_backend.payment.domain.entity.ShopProduct;
 import com.example.kiwi_backend.payment.domain.enumerated.PaymentStatus;
 import com.example.kiwi_backend.payment.domain.repository.PaymentRepository;
 import com.example.kiwi_backend.payment.domain.repository.ShopProductRepository;
-import com.example.kiwi_backend.payment.infra.kakaopay.KakaoPayApproval;
-import com.example.kiwi_backend.payment.infra.kakaopay.KakaoPayClient;
-import com.example.kiwi_backend.payment.infra.kakaopay.KakaoPayReady;
+import com.example.kiwi_backend.payment.infra.toss.TossPaymentConfirmation;
+import com.example.kiwi_backend.payment.infra.toss.TossPaymentsClient;
+import com.example.kiwi_backend.payment.infra.toss.TossPaymentsProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -38,16 +38,19 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
- * 카카오페이로 보석 구매·환불.
+ * 토스페이먼츠로 보석 구매·환불.
  *
- * 동시성: 결제 행을 먼저 잠그고 카카오페이 호출과 보석 변동을 같은 트랜잭션에서 한다.
+ * 동시성: 결제 행을 먼저 잠그고 토스 호출과 보석 변동을 같은 트랜잭션에서 한다.
  * 같은 주문에 승인 요청이 두 번 와도 두 번째는 첫 번째가 끝날 때까지 기다렸다가 PAID를 보고 그대로 돌아간다.
- * 잠금 순서는 항상 결제 → 지갑. 카카오페이 응답을 기다리는 동안(최대 수 초) 이 잠금을 쥐고 있다.
+ * 잠금 순서는 항상 결제 → 지갑. 토스 응답을 기다리는 동안(최대 수 초) 이 잠금을 쥐고 있다.
  *
- * 우리 DB와 카카오페이가 어긋나는 경우:
- * - 승인: 카카오페이 승인 후 우리 쪽 처리(금액 검증, 보석 지급, 커밋)가 실패하면 카카오페이 결제를 바로 취소한다.
+ * 금액: 결제창은 프론트가 금액을 넣어 열기 때문에 조작될 수 있다.
+ * 승인 전에 successUrl로 받은 amount를 우리 DB 금액과 비교하고, 승인 응답의 totalAmount도 한 번 더 확인한다.
+ *
+ * 우리 DB와 토스가 어긋나는 경우:
+ * - 승인: 토스 승인 후 우리 쪽 처리(금액 검증, 보석 지급, 커밋)가 실패하면 토스 결제를 바로 취소한다.
  *   그래서 승인 트랜잭션은 커밋 실패까지 잡을 수 있도록 @Transactional 대신 TransactionTemplate으로 감싼다.
- * - 환불: 보석 회수 → 카카오페이 취소 순서. 카카오페이 취소가 실패하면 보석 회수도 함께 롤백된다.
+ * - 환불: 보석 회수 → 토스 취소 순서. 토스 취소가 실패하면 보석 회수도 함께 롤백된다.
  *   취소 성공 뒤 커밋만 실패하는 경우는 자동 복구하지 않고 에러 로그를 남긴다.
  */
 @Slf4j
@@ -55,13 +58,15 @@ import java.util.stream.Collectors;
 public class PaymentService {
 
     private static final int MAX_HISTORY_PAGE_SIZE = 50;
+    private static final String REFUND_REASON = "사용자 환불 요청";
     private static final List<PaymentStatus> VISIBLE_STATUSES = List.of(PaymentStatus.PAID, PaymentStatus.REFUNDED);
 
     private final PaymentRepository paymentRepository;
     private final ShopProductRepository productRepository;
     private final MemberQueryService memberQueryService;
     private final GemWallet gemWallet;
-    private final KakaoPayClient kakaoPayClient;
+    private final TossPaymentsClient tossClient;
+    private final TossPaymentsProperties tossProperties;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final Duration refundWindow;
@@ -70,7 +75,8 @@ public class PaymentService {
                           ShopProductRepository productRepository,
                           MemberQueryService memberQueryService,
                           GemWallet gemWallet,
-                          KakaoPayClient kakaoPayClient,
+                          TossPaymentsClient tossClient,
+                          TossPaymentsProperties tossProperties,
                           PlatformTransactionManager transactionManager,
                           Clock clock,
                           @Value("${app.payment.refund-window:7d}") Duration refundWindow) {
@@ -78,7 +84,8 @@ public class PaymentService {
         this.productRepository = productRepository;
         this.memberQueryService = memberQueryService;
         this.gemWallet = gemWallet;
-        this.kakaoPayClient = kakaoPayClient;
+        this.tossClient = tossClient;
+        this.tossProperties = tossProperties;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.clock = clock;
         this.refundWindow = refundWindow;
@@ -86,7 +93,7 @@ public class PaymentService {
 
     // ===== 결제 준비 =====
 
-    /** 결제 행을 만들고 카카오페이 결제창 URL을 받는다. 카카오페이 호출이 실패하면 결제 행도 남지 않는다 */
+    /** 결제 행을 만들고 프론트가 토스 결제창을 여는 데 필요한 값을 준다. 토스 호출은 없다 */
     @Transactional
     public PaymentReadyResponse ready(Long memberId, Long productId) {
         MemberSummary member = memberQueryService.getSummary(memberId);
@@ -100,25 +107,24 @@ public class PaymentService {
 
         Payment payment = paymentRepository.save(Payment.ready(memberId, product, UUID.randomUUID().toString()));
 
-        KakaoPayReady ready = kakaoPayClient.ready(payment.getOrderId(), memberId, product.getName(), payment.getAmount());
-        payment.attachPaymentKey(ready.tid());
-
         return new PaymentReadyResponse(
                 payment.getOrderId(),
+                product.getName(),
+                payment.getAmount(),
                 payment.getGrantedGem(),
-                ready.pcUrl(),
-                ready.mobileUrl(),
-                ready.appUrl()
+                tossProperties.clientKey(),
+                tossProperties.successUrlFor(payment.getOrderId()),
+                tossProperties.failUrlFor(payment.getOrderId())
         );
     }
 
     // ===== 결제 승인 =====
 
     /**
-     * 사용자가 결제창에서 승인한 뒤 프론트가 pg_token을 넘겨 부른다.
+     * 사용자가 결제창에서 인증한 뒤 프론트가 successUrl의 paymentKey, amount를 넘겨 부른다.
      * 이미 승인된 주문이면 다시 지급하지 않고 같은 결과를 돌려준다 (새로고침, 중복 클릭).
      */
-    public PaymentApproveResponse approve(Long memberId, String orderId, String pgToken) {
+    public PaymentApproveResponse approve(Long memberId, String orderId, String paymentKey, int amount) {
         AtomicBoolean requested = new AtomicBoolean(false);
         AtomicReference<Approved> approved = new AtomicReference<>();
         try {
@@ -132,16 +138,19 @@ public class PaymentService {
                 if (!payment.isApprovable()) {
                     throw new IllegalStateException("승인할 수 없는 결제입니다");
                 }
-
-                requested.set(true);
-                KakaoPayApproval approval = kakaoPayClient.approve(payment.getPaymentKey(), orderId, memberId, pgToken);
-                approved.set(new Approved(payment.getPaymentKey(), approval.totalAmount()));
-
-                if (approval.totalAmount() != payment.getAmount()) {
+                if (amount != payment.getAmount()) {   // 결제창 금액 조작. 승인 전이라 돈은 빠지지 않았다
                     throw new IllegalStateException("결제 금액이 일치하지 않습니다");
                 }
 
-                payment.markPaid(clock.instant());
+                requested.set(true);
+                TossPaymentConfirmation confirmation = tossClient.confirm(paymentKey, orderId, amount);
+                approved.set(new Approved(confirmation.paymentKey(), confirmation.totalAmount()));
+
+                if (confirmation.totalAmount() != payment.getAmount()) {
+                    throw new IllegalStateException("결제 금액이 일치하지 않습니다");
+                }
+
+                payment.markPaid(confirmation.paymentKey(), clock.instant());
                 GemResult result = gemWallet.apply(purchaseCommand(payment));
                 return new PaymentApproveResponse(orderId, payment.getGrantedGem(), result.balanceAfter());
             });
@@ -153,16 +162,16 @@ public class PaymentService {
         }
     }
 
-    /** 카카오페이에 승인을 요청한 뒤 실패: 돈만 빠지고 보석은 없는 상태가 남지 않게 정리한다 */
+    /** 토스에 승인을 요청한 뒤 실패: 돈만 빠지고 보석은 없는 상태가 남지 않게 정리한다 */
     private void compensateFailedApproval(String orderId, Approved approved) {
         String reason = "결제 승인 실패";
         if (approved != null) {
             reason = "승인 후 처리 실패로 자동 취소";
             try {
-                kakaoPayClient.cancel(approved.tid(), approved.amount());
+                tossClient.cancel(approved.paymentKey(), approved.amount(), reason);
             } catch (RuntimeException cancelError) {
-                log.error("승인 후 처리 실패, 카카오페이 결제 취소도 실패. 수동 확인 필요 orderId={} tid={}",
-                        orderId, approved.tid(), cancelError);
+                log.error("승인 후 처리 실패, 토스 결제 취소도 실패. 수동 확인 필요 orderId={} paymentKey={}",
+                        orderId, approved.paymentKey(), cancelError);
             }
         }
 
@@ -179,7 +188,7 @@ public class PaymentService {
 
     // ===== 결제창에서 취소·실패 =====
 
-    /** 카카오페이 cancel_url, fail_url로 돌아왔을 때 프론트가 부른다. 대기 중인 결제만 실패로 바꾸고 나머지는 무시 */
+    /** 토스 failUrl로 돌아왔을 때(사용자 취소 포함) 프론트가 부른다. 대기 중인 결제만 실패로 바꾸고 나머지는 무시 */
     @Transactional
     public void abort(Long memberId, String orderId) {
         Payment payment = findOwnedForUpdate(memberId, orderId);
@@ -192,7 +201,7 @@ public class PaymentService {
 
     /** 결제 후 환불 기간 안이고, 지급한 보석을 그대로 회수할 수 있을 때만 환불한다 */
     public PaymentRefundResponse refund(Long memberId, String orderId) {
-        AtomicBoolean canceledAtKakao = new AtomicBoolean(false);
+        AtomicBoolean canceledAtToss = new AtomicBoolean(false);
         try {
             return transactionTemplate.execute(status -> {
                 Payment payment = findOwnedForUpdate(memberId, orderId);
@@ -208,15 +217,15 @@ public class PaymentService {
                     throw new IllegalStateException("구매한 보석을 이미 사용해서 환불할 수 없습니다");
                 }
 
-                kakaoPayClient.cancel(payment.getPaymentKey(), payment.getAmount());   // 실패하면 보석 회수도 롤백
-                canceledAtKakao.set(true);
+                tossClient.cancel(payment.getPaymentKey(), payment.getAmount(), REFUND_REASON);   // 실패하면 보석 회수도 롤백
+                canceledAtToss.set(true);
 
-                payment.markRefunded(now, "사용자 환불 요청");
+                payment.markRefunded(now, REFUND_REASON);
                 return new PaymentRefundResponse(orderId, payment.getGrantedGem(), result.balanceAfter());
             });
         } catch (RuntimeException e) {
-            if (canceledAtKakao.get()) {
-                log.error("카카오페이 결제는 취소됐지만 환불 저장 실패. 수동 확인 필요 orderId={}", orderId, e);
+            if (canceledAtToss.get()) {
+                log.error("토스 결제는 취소됐지만 환불 저장 실패. 수동 확인 필요 orderId={}", orderId, e);
             }
             throw e;
         }
@@ -269,7 +278,7 @@ public class PaymentService {
         return GemCommand.gemPurchase(payment.getMemberId(), payment.getId(), payment.getGrantedGem());
     }
 
-    /** 카카오페이에서 승인된 결제. 우리 쪽 처리가 실패하면 이 값으로 취소한다 */
-    private record Approved(String tid, int amount) {
+    /** 토스에서 승인된 결제. 우리 쪽 처리가 실패하면 이 값으로 취소한다 */
+    private record Approved(String paymentKey, int amount) {
     }
 }

@@ -24,7 +24,7 @@ public class ShopProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 상품명, 카카오페이 결제창에 그대로 보인다 */
+    /** 상품명, 토스 결제창에 주문명(orderName)으로 그대로 보인다 */
     @Column(nullable = false, length = 100)
     private String name;
 

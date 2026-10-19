@@ -25,10 +25,12 @@ class PaymentTest {
         assertThat(payment.getAmount()).isEqualTo(3000);
         assertThat(payment.getGrantedGem()).isEqualTo(33);
         assertThat(payment.getProductId()).isEqualTo(5L);
-        assertThat(payment.isApprovable()).isFalse();   // tid 받기 전
-
-        payment.attachPaymentKey("T1");
         assertThat(payment.isApprovable()).isTrue();
+        assertThat(payment.getPaymentKey()).isNull();   // 토스 승인 전
+
+        payment.markPaid("pk-1", NOW);
+        assertThat(payment.getPaymentKey()).isEqualTo("pk-1");
+        assertThat(payment.isApprovable()).isFalse();
     }
 
     @Test
@@ -53,8 +55,7 @@ class PaymentTest {
     @Test
     void paidPaymentIsRefundableOnlyWithinWindow() {
         Payment payment = Payment.ready(1L, product(10, 0, 1000), "order-1");
-        payment.attachPaymentKey("T1");
-        payment.markPaid(NOW);
+        payment.markPaid("pk-1", NOW);
 
         assertThat(payment.isRefundable(NOW.plus(WINDOW).minusSeconds(1), WINDOW)).isTrue();
         assertThat(payment.isRefundable(NOW.plus(WINDOW), WINDOW)).isFalse();
@@ -63,12 +64,11 @@ class PaymentTest {
     @Test
     void cannotPayTwiceOrRefundUnpaid() {
         Payment payment = Payment.ready(1L, product(10, 0, 1000), "order-1");
-        payment.attachPaymentKey("T1");
 
         assertThatThrownBy(() -> payment.markRefunded(NOW, "환불")).isInstanceOf(IllegalStateException.class);
 
-        payment.markPaid(NOW);
-        assertThatThrownBy(() -> payment.markPaid(NOW)).isInstanceOf(IllegalStateException.class);
+        payment.markPaid("pk-1", NOW);
+        assertThatThrownBy(() -> payment.markPaid("pk-2", NOW)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> payment.markFailed(NOW, "실패")).isInstanceOf(IllegalStateException.class);
 
         payment.markRefunded(NOW, "환불");

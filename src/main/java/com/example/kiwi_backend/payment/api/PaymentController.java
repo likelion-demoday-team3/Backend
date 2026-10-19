@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 보석 구매 결제 (카카오페이).
+ * 보석 구매 결제 (토스페이먼츠).
  *
- * 1. POST /payments/kakaopay/ready     → 받은 URL로 결제창 이동
- * 2. 결제창에서 승인 → 카카오페이가 프론트 approval_url/{orderId}?pg_token=... 으로 돌려보냄
- * 3. POST /payments/kakaopay/approve   → 보석 지급
- *    (결제창에서 취소·실패로 돌아오면 POST /payments/{orderId}/abort)
+ * 1. POST /payments/toss/ready     → 받은 값으로 프론트가 토스 SDK 결제창을 연다
+ * 2. 결제창에서 인증 → 토스가 프론트 successUrl?paymentKey=...&orderId=...&amount=... 으로 돌려보냄
+ * 3. POST /payments/toss/confirm   → 승인 후 보석 지급
+ *    (결제창에서 취소·실패로 failUrl에 돌아오면 POST /payments/{orderId}/abort)
  */
 @RestController
 @RequestMapping("/payments")
@@ -27,17 +27,18 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     /** 결제 준비 */
-    @PostMapping("/kakaopay/ready")
+    @PostMapping("/toss/ready")
     public ApiResponse<PaymentReadyResponse> ready(@AuthenticationPrincipal AuthUser authUser,
                                                    @Valid @RequestBody PaymentReadyRequest request) {
         return ApiResponse.ok(paymentService.ready(authUser.memberId(), request.productId()));
     }
 
     /** 결제 승인 (보석 지급) */
-    @PostMapping("/kakaopay/approve")
+    @PostMapping("/toss/confirm")
     public ApiResponse<PaymentApproveResponse> approve(@AuthenticationPrincipal AuthUser authUser,
                                                        @Valid @RequestBody PaymentApproveRequest request) {
-        return ApiResponse.ok(paymentService.approve(authUser.memberId(), request.orderId(), request.pgToken()));
+        return ApiResponse.ok(paymentService.approve(
+                authUser.memberId(), request.orderId(), request.paymentKey(), request.amount()));
     }
 
     /** 결제창에서 취소·실패 */
