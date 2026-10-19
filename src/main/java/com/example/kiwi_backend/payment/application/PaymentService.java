@@ -2,6 +2,8 @@ package com.example.kiwi_backend.payment.application;
 
 import com.example.kiwi_backend.common.exception.InsufficientGemException;
 import com.example.kiwi_backend.common.exception.NotFoundException;
+import com.example.kiwi_backend.common.exception.PaymentGatewayException;
+import com.example.kiwi_backend.common.exception.PaymentResultUnknownException;
 import com.example.kiwi_backend.contract.command.GemWallet;
 import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.GemResult;
@@ -50,7 +52,11 @@ import java.util.stream.Collectors;
  * 우리 DB와 토스가 어긋나는 경우:
  * - 승인: 토스 승인 후 우리 쪽 처리(금액 검증, 보석 지급, 커밋)가 실패하면 토스 결제를 바로 취소한다.
  *   그래서 승인 트랜잭션은 커밋 실패까지 잡을 수 있도록 @Transactional 대신 TransactionTemplate으로 감싼다.
+ *   승인 응답을 못 받은 경우(시간 초과 등)는 토스에 결제를 조회해서, 승인돼 있으면 같은 방법으로 취소한다.
+ *   조회도 실패하면 자동 복구하지 않고 "승인 결과 확인 실패"로 남긴 뒤 에러 로그를 남긴다.
  * - 환불: 보석 회수 → 토스 취소 순서. 토스 취소가 실패하면 보석 회수도 함께 롤백된다.
+ *   단, 취소 요청이 실패해도 토스에 결제를 조회해서 이미 취소돼 있으면 환불을 그대로 완료한다
+ *   (응답만 못 받은 경우, 그 뒤 다시 환불을 요청한 경우).
  *   취소 성공 뒤 커밋만 실패하는 경우는 자동 복구하지 않고 에러 로그를 남긴다.
  */
 @Slf4j
@@ -156,15 +162,24 @@ public class PaymentService {
             });
         } catch (RuntimeException e) {
             if (requested.get()) {
-                compensateFailedApproval(orderId, approved.get());
+                compensateFailedApproval(orderId, paymentKey, approved.get(), e);
             }
             throw e;
         }
     }
 
     /** 토스에 승인을 요청한 뒤 실패: 돈만 빠지고 보석은 없는 상태가 남지 않게 정리한다 */
-    private void compensateFailedApproval(String orderId, Approved approved) {
+    private void compensateFailedApproval(String orderId, String paymentKey, Approved approved, RuntimeException cause) {
         String reason = "결제 승인 실패";
+        if (approved == null && cause instanceof PaymentResultUnknownException) {
+            try {
+                approved = findApproved(orderId, paymentKey);
+            } catch (RuntimeException lookupError) {
+                reason = "승인 결과 확인 실패";
+                log.error("토스 승인 응답을 못 받았고 결제 조회도 실패. 수동 확인 필요 orderId={} paymentKey={}",
+                        orderId, paymentKey, lookupError);
+            }
+        }
         if (approved != null) {
             reason = "승인 후 처리 실패로 자동 취소";
             try {
@@ -184,6 +199,22 @@ public class PaymentService {
         } catch (RuntimeException markError) {
             log.error("결제 실패 상태 저장 실패 orderId={}", orderId, markError);
         }
+    }
+
+    /**
+     * 승인 응답을 못 받았을 때 토스에 실제 결과를 묻는다. 승인돼 있으면 취소할 값을, 아니면 null을 준다.
+     * 아직 처리 중이라 판단할 수 없으면 예외를 던져 수동 확인 대상으로 남긴다.
+     */
+    private Approved findApproved(String orderId, String paymentKey) {
+        TossPaymentConfirmation found = tossClient.find(paymentKey);
+        if (!orderId.equals(found.orderId())) {
+            throw new IllegalStateException("다른 주문의 결제입니다");
+        }
+        return switch (found.status()) {
+            case "DONE" -> new Approved(found.paymentKey(), found.totalAmount());
+            case "READY", "ABORTED", "EXPIRED", "CANCELED", "PARTIAL_CANCELED" -> null;
+            default -> throw new IllegalStateException("결제 상태를 판단할 수 없습니다: " + found.status());
+        };
     }
 
     // ===== 결제창에서 취소·실패 =====
@@ -217,7 +248,7 @@ public class PaymentService {
                     throw new IllegalStateException("구매한 보석을 이미 사용해서 환불할 수 없습니다");
                 }
 
-                tossClient.cancel(payment.getPaymentKey(), payment.getAmount(), REFUND_REASON);   // 실패하면 보석 회수도 롤백
+                cancelForRefund(payment);   // 실패하면 보석 회수도 롤백
                 canceledAtToss.set(true);
 
                 payment.markRefunded(now, REFUND_REASON);
@@ -229,6 +260,40 @@ public class PaymentService {
             }
             throw e;
         }
+    }
+
+    /** 토스 결제를 취소한다. 취소 요청이 실패하면 토스에 조회해서 이미 취소돼 있을 때만 성공으로 본다 */
+    private void cancelForRefund(Payment payment) {
+        try {
+            tossClient.cancel(payment.getPaymentKey(), payment.getAmount(), REFUND_REASON);
+        } catch (PaymentGatewayException e) {
+            if (!isCanceledAtToss(payment, e)) {
+                throw e;
+            }
+            log.warn("토스 취소 요청은 실패했지만 조회해 보니 이미 취소됨. 환불 완료 처리 orderId={}", payment.getOrderId());
+        }
+    }
+
+    private boolean isCanceledAtToss(Payment payment, PaymentGatewayException cancelError) {
+        String tossStatus;
+        try {
+            tossStatus = tossClient.find(payment.getPaymentKey()).status();
+        } catch (RuntimeException lookupError) {
+            if (cancelError instanceof PaymentResultUnknownException) {
+                log.error("토스 취소 응답을 못 받았고 결제 조회도 실패. 수동 확인 필요 orderId={} paymentKey={}",
+                        payment.getOrderId(), payment.getPaymentKey(), lookupError);
+            }
+            return false;
+        }
+        return switch (tossStatus) {
+            case "CANCELED" -> true;
+            case "DONE" -> false;
+            default -> {
+                log.error("환불 중 토스 결제 상태를 판단할 수 없음. 수동 확인 필요 orderId={} status={}",
+                        payment.getOrderId(), tossStatus);
+                yield false;
+            }
+        };
     }
 
     // ===== 조회 =====

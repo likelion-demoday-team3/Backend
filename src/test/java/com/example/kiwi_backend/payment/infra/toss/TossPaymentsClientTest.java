@@ -1,16 +1,21 @@
 package com.example.kiwi_backend.payment.infra.toss;
 
 import com.example.kiwi_backend.common.exception.PaymentGatewayException;
+import com.example.kiwi_backend.common.exception.PaymentResultUnknownException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.net.SocketTimeoutException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class TossPaymentsClientTest {
@@ -78,6 +83,56 @@ class TossPaymentsClientTest {
         assertThatThrownBy(() -> client.confirm("pk-1", "order-1", 3000))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessage("토스페이먼츠 결제 처리에 실패했습니다");
+    }
+
+    @Test
+    void rejectionIsNotUnknownResult() {
+        TossPaymentsClient client = new TossPaymentsClient(builder, properties);
+
+        server.expect(requestTo(BASE_URL + "/v1/payments/confirm"))
+                .andRespond(withBadRequest().contentType(MediaType.APPLICATION_JSON).body("{\"code\":\"REJECT_CARD_PAYMENT\"}"));
+
+        assertThatThrownBy(() -> client.confirm("pk-1", "order-1", 3000))
+                .isNotInstanceOf(PaymentResultUnknownException.class);
+    }
+
+    @Test
+    void timeoutBecomesUnknownResult() {
+        TossPaymentsClient client = new TossPaymentsClient(builder, properties);
+
+        server.expect(requestTo(BASE_URL + "/v1/payments/confirm"))
+                .andRespond(withException(new SocketTimeoutException("Read timed out")));
+
+        assertThatThrownBy(() -> client.confirm("pk-1", "order-1", 3000))
+                .isInstanceOf(PaymentResultUnknownException.class)
+                .hasMessage("토스페이먼츠에 연결할 수 없습니다");
+    }
+
+    @Test
+    void serverErrorBecomesUnknownResult() {
+        TossPaymentsClient client = new TossPaymentsClient(builder, properties);
+
+        server.expect(requestTo(BASE_URL + "/v1/payments/confirm"))
+                .andRespond(withServerError().contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":\"FAILED_INTERNAL_SYSTEM_PROCESSING\"}"));
+
+        assertThatThrownBy(() -> client.confirm("pk-1", "order-1", 3000))
+                .isInstanceOf(PaymentResultUnknownException.class);
+    }
+
+    @Test
+    void findGetsPaymentByKey() {
+        TossPaymentsClient client = new TossPaymentsClient(builder, properties);
+
+        server.expect(requestTo(BASE_URL + "/v1/payments/pk-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", BASIC_AUTH))
+                .andRespond(withSuccess("""
+                        {"paymentKey":"pk-1","orderId":"order-1","status":"DONE","totalAmount":3000,"method":"카드"}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(client.find("pk-1")).isEqualTo(new TossPaymentConfirmation("pk-1", "order-1", "DONE", 3000, "카드"));
+        server.verify();
     }
 
     @Test

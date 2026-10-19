@@ -3,6 +3,7 @@ package com.example.kiwi_backend.payment.application;
 import com.example.kiwi_backend.common.exception.InsufficientGemException;
 import com.example.kiwi_backend.common.exception.NotFoundException;
 import com.example.kiwi_backend.common.exception.PaymentGatewayException;
+import com.example.kiwi_backend.common.exception.PaymentResultUnknownException;
 import com.example.kiwi_backend.contract.command.GemWallet;
 import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.GemResult;
@@ -172,6 +173,78 @@ class PaymentServiceTest {
     }
 
     @Test
+    void approveTimeoutButApprovedAtTossCancelsIt() {
+        Payment payment = readyPayment();
+        givenLocked(payment);
+        givenConfirmTimesOut();
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("DONE"));
+
+        assertThatThrownBy(() -> service.approve(MEMBER_ID, ORDER_ID, PAYMENT_KEY, 3000))
+                .isInstanceOf(PaymentResultUnknownException.class);
+
+        verify(tossClient).cancel(eq(PAYMENT_KEY), eq(3000), anyString());
+        verifyNoInteractions(gemWallet);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(payment.getCancelReason()).isEqualTo("승인 후 처리 실패로 자동 취소");
+    }
+
+    @Test
+    void approveTimeoutAndNotApprovedAtTossJustFails() {
+        Payment payment = readyPayment();
+        givenLocked(payment);
+        givenConfirmTimesOut();
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("ABORTED"));
+
+        assertThatThrownBy(() -> service.approve(MEMBER_ID, ORDER_ID, PAYMENT_KEY, 3000))
+                .isInstanceOf(PaymentResultUnknownException.class);
+
+        verify(tossClient, never()).cancel(anyString(), anyInt(), anyString());
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(payment.getCancelReason()).isEqualTo("결제 승인 실패");
+    }
+
+    @Test
+    void approveTimeoutAndLookupFailsLeavesItForManualCheck() {
+        Payment payment = readyPayment();
+        givenLocked(payment);
+        givenConfirmTimesOut();
+        when(tossClient.find(PAYMENT_KEY)).thenThrow(new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", null));
+
+        assertThatThrownBy(() -> service.approve(MEMBER_ID, ORDER_ID, PAYMENT_KEY, 3000))
+                .isInstanceOf(PaymentResultUnknownException.class);
+
+        verify(tossClient, never()).cancel(anyString(), anyInt(), anyString());
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(payment.getCancelReason()).isEqualTo("승인 결과 확인 실패");
+    }
+
+    @Test
+    void approveTimeoutStillInProgressLeavesItForManualCheck() {
+        Payment payment = readyPayment();
+        givenLocked(payment);
+        givenConfirmTimesOut();
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("IN_PROGRESS"));
+
+        assertThatThrownBy(() -> service.approve(MEMBER_ID, ORDER_ID, PAYMENT_KEY, 3000))
+                .isInstanceOf(PaymentResultUnknownException.class);
+
+        verify(tossClient, never()).cancel(anyString(), anyInt(), anyString());
+        assertThat(payment.getCancelReason()).isEqualTo("승인 결과 확인 실패");
+    }
+
+    @Test
+    void approveRejectedByTossDoesNotLookUp() {
+        Payment payment = readyPayment();
+        givenLocked(payment);
+        when(tossClient.confirm(PAYMENT_KEY, ORDER_ID, 3000))
+                .thenThrow(new PaymentGatewayException("토스페이먼츠 결제 처리에 실패했습니다"));
+
+        assertThatThrownBy(() -> service.approve(MEMBER_ID, ORDER_ID, PAYMENT_KEY, 3000)).isInstanceOf(PaymentGatewayException.class);
+
+        verify(tossClient, never()).find(anyString());
+    }
+
+    @Test
     void cannotApproveOrFailSomeoneElsesOrder() {
         Payment payment = readyPayment();
         givenLocked(payment);
@@ -199,6 +272,77 @@ class PaymentServiceTest {
         assertThat(command.getValue().type()).isEqualTo(GemTransactionType.PURCHASE_REFUND);
         assertThat(command.getValue().amount()).isEqualTo(33);
         verify(tossClient).cancel(PAYMENT_KEY, 3000, "사용자 환불 요청");
+    }
+
+    @Test
+    void refundTimeoutButCanceledAtTossCompletesRefund() {
+        Payment payment = paidPayment(NOW.minus(Duration.ofDays(1)));
+        givenLocked(payment);
+        when(gemWallet.apply(any())).thenReturn(new GemResult(2L, 0, false));
+        doThrow(new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", null))
+                .when(tossClient).cancel(PAYMENT_KEY, 3000, "사용자 환불 요청");
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("CANCELED"));
+
+        PaymentRefundResponse response = service.refund(MEMBER_ID, ORDER_ID);
+
+        assertThat(response).isEqualTo(new PaymentRefundResponse(ORDER_ID, 33, 0));
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+    }
+
+    @Test
+    void refundTimeoutAndStillPaidAtTossFails() {
+        Payment payment = paidPayment(NOW.minus(Duration.ofDays(1)));
+        givenLocked(payment);
+        when(gemWallet.apply(any())).thenReturn(new GemResult(2L, 0, false));
+        doThrow(new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", null))
+                .when(tossClient).cancel(PAYMENT_KEY, 3000, "사용자 환불 요청");
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("DONE"));
+
+        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID)).isInstanceOf(PaymentResultUnknownException.class);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
+    @Test
+    void refundTimeoutAndLookupFailsFails() {
+        Payment payment = paidPayment(NOW.minus(Duration.ofDays(1)));
+        givenLocked(payment);
+        when(gemWallet.apply(any())).thenReturn(new GemResult(2L, 0, false));
+        doThrow(new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", null))
+                .when(tossClient).cancel(PAYMENT_KEY, 3000, "사용자 환불 요청");
+        when(tossClient.find(PAYMENT_KEY)).thenThrow(new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", null));
+
+        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID)).isInstanceOf(PaymentResultUnknownException.class);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
+    @Test
+    void refundRetryAfterAlreadyCanceledAtTossCompletesRefund() {
+        Payment payment = paidPayment(NOW.minus(Duration.ofDays(1)));
+        givenLocked(payment);
+        when(gemWallet.apply(any())).thenReturn(new GemResult(2L, 0, false));
+        doThrow(new PaymentGatewayException("토스페이먼츠 결제 처리에 실패했습니다"))   // ALREADY_CANCELED_PAYMENT
+                .when(tossClient).cancel(PAYMENT_KEY, 3000, "사용자 환불 요청");
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("CANCELED"));
+
+        service.refund(MEMBER_ID, ORDER_ID);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+    }
+
+    @Test
+    void refundRejectedByTossWhilePaidFails() {
+        Payment payment = paidPayment(NOW.minus(Duration.ofDays(1)));
+        givenLocked(payment);
+        when(gemWallet.apply(any())).thenReturn(new GemResult(2L, 0, false));
+        doThrow(new PaymentGatewayException("토스페이먼츠 결제 처리에 실패했습니다"))
+                .when(tossClient).cancel(PAYMENT_KEY, 3000, "사용자 환불 요청");
+        when(tossClient.find(PAYMENT_KEY)).thenReturn(found("DONE"));
+
+        assertThatThrownBy(() -> service.refund(MEMBER_ID, ORDER_ID)).isInstanceOf(PaymentGatewayException.class);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
     }
 
     @Test
@@ -289,6 +433,15 @@ class PaymentServiceTest {
     private static Payment withId(Payment payment) {
         ReflectionTestUtils.setField(payment, "id", 100L);
         return payment;
+    }
+
+    private void givenConfirmTimesOut() {
+        when(tossClient.confirm(PAYMENT_KEY, ORDER_ID, 3000))
+                .thenThrow(new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", null));
+    }
+
+    private static TossPaymentConfirmation found(String status) {
+        return new TossPaymentConfirmation(PAYMENT_KEY, ORDER_ID, status, 3000, "카드");
     }
 
     private static TossPaymentConfirmation confirmation(int total) {

@@ -1,11 +1,13 @@
 package com.example.kiwi_backend.payment.infra.toss;
 
 import com.example.kiwi_backend.common.exception.PaymentGatewayException;
+import com.example.kiwi_backend.common.exception.PaymentResultUnknownException;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -25,7 +27,9 @@ import java.util.Map;
  * 흐름: 프론트가 SDK로 결제창을 연다 → 사용자가 인증 → successUrl로 paymentKey가 돌아옴 → confirm → 필요하면 cancel
  * 결제창은 프론트가 직접 열기 때문에 서버 쪽 "결제 준비" 호출은 없다.
  *
- * 실패하면 PaymentGatewayException. 토스 원문 응답은 로그로만 남긴다.
+ * 토스가 4xx로 거절하면 PaymentGatewayException (처리되지 않음).
+ * 5xx이거나 응답 자체를 못 받으면 PaymentResultUnknownException (처리됐을 수도 있음 → find로 확인).
+ * 토스 원문 응답은 로그로만 남긴다.
  */
 @Slf4j
 @Component
@@ -57,9 +61,12 @@ public class TossPaymentsClient {
         body.put("orderId", orderId);
         body.put("amount", amount);
 
-        PaymentResponse response = post("/v1/payments/confirm", body);
-        int total = response.totalAmount() == null ? 0 : response.totalAmount();
-        return new TossPaymentConfirmation(response.paymentKey(), response.orderId(), response.status(), total, response.method());
+        return toConfirmation(send(HttpMethod.POST, "/v1/payments/confirm", body));
+    }
+
+    /** 결제 조회. 승인 응답을 못 받았을 때 실제로 승인됐는지 확인하는 데 쓴다 */
+    public TossPaymentConfirmation find(String paymentKey) {
+        return toConfirmation(send(HttpMethod.GET, "/v1/payments/" + paymentKey, null));
     }
 
     /** 결제 취소 (전액) */
@@ -68,35 +75,44 @@ public class TossPaymentsClient {
         body.put("cancelReason", reason);
         body.put("cancelAmount", cancelAmount);
 
-        post("/v1/payments/" + paymentKey + "/cancel", body);
+        send(HttpMethod.POST, "/v1/payments/" + paymentKey + "/cancel", body);
     }
 
-    private PaymentResponse post(String path, Map<String, Object> body) {
+    private static TossPaymentConfirmation toConfirmation(PaymentResponse response) {
+        int total = response.totalAmount() == null ? 0 : response.totalAmount();
+        return new TossPaymentConfirmation(response.paymentKey(), response.orderId(), response.status(), total, response.method());
+    }
+
+    private PaymentResponse send(HttpMethod method, String path, Map<String, Object> body) {
         if (properties.secretKey() == null || properties.secretKey().isBlank()) {
             throw new PaymentGatewayException("결제 설정이 되어 있지 않습니다 (TOSS_SECRET_KEY)");
         }
 
         PaymentResponse response;
         try {
-            response = restClient.post()
+            RestClient.RequestBodySpec spec = restClient.method(method)
                     .uri(path)
-                    .header(HttpHeaders.AUTHORIZATION, authorization())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
+                    .header(HttpHeaders.AUTHORIZATION, authorization());
+            if (body != null) {
+                spec.contentType(MediaType.APPLICATION_JSON).body(body);
+            }
+            response = spec.retrieve()
                     .onStatus(HttpStatusCode::isError, (request, res) -> {
                         String detail = new String(res.getBody().readAllBytes(), StandardCharsets.UTF_8);
                         log.warn("토스페이먼츠 요청 실패 path={} status={} body={}", path, res.getStatusCode().value(), detail);
+                        if (res.getStatusCode().is5xxServerError()) {
+                            throw new PaymentResultUnknownException("토스페이먼츠 결제 처리에 실패했습니다", null);
+                        }
                         throw new PaymentGatewayException("토스페이먼츠 결제 처리에 실패했습니다");
                     })
                     .body(PaymentResponse.class);
         } catch (RestClientException e) {
-            log.warn("토스페이먼츠 호출 실패 path={}", path, e);
-            throw new PaymentGatewayException("토스페이먼츠에 연결할 수 없습니다", e);
+            log.warn("토스페이먼츠 응답을 받지 못함 path={}", path, e);
+            throw new PaymentResultUnknownException("토스페이먼츠에 연결할 수 없습니다", e);
         }
 
         if (response == null) {
-            throw new PaymentGatewayException("토스페이먼츠 응답이 비어 있습니다");
+            throw new PaymentResultUnknownException("토스페이먼츠 응답이 비어 있습니다", null);
         }
         return response;
     }
