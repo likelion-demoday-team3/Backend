@@ -44,6 +44,10 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false, unique = true, updatable = false)
     private String email;
 
+    /** 회원 이름, 가입 시 입력. 기존 회원은 없을 수 있다 */
+    @Column(length = 100)
+    private String name;
+
     /** 로그인 비밀번호 BCrypt */
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
@@ -102,6 +106,7 @@ public class Member extends BaseTimeEntity {
      * today는 테스트에서 날짜를 고정할 수 있도록 밖에서 받는다.
      */
     public static Member register(String email,
+                                  String name,
                                   String passwordHash,
                                   String university,
                                   Gender gender,
@@ -115,6 +120,7 @@ public class Member extends BaseTimeEntity {
         Member member = new Member();
         member.publicId = UUID.randomUUID();
         member.email = requireText(email, "이메일");
+        member.name = requireText(name, "이름");
         member.passwordHash = requireText(passwordHash, "비밀번호");
         member.university = requireText(university, "학교");
         member.gender = requireNonNull(gender, "성별");

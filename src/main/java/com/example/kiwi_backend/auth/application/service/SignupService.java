@@ -44,6 +44,7 @@ public class SignupService {
 
         Long memberId = memberRegistrar.register(new RegisterMemberCommand(
                 email,
+                request.name(),
                 passwordEncoder.encode(request.password()),
                 university,
                 request.gender(),

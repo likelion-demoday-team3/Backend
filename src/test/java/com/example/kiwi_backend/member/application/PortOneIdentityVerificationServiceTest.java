@@ -28,7 +28,7 @@ class PortOneIdentityVerificationServiceTest {
     private final MemberRepository members = mock(MemberRepository.class);
     private final RestClient.Builder restClientBuilder = RestClient.builder();
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
-    private final Member member = Member.register("test@yonsei.ac.kr", "hash", "연세대학교",
+    private final Member member = Member.register("test@yonsei.ac.kr", "테스터", "hash", "연세대학교",
             Gender.FEMALE, LocalDate.of(2002, 1, 1), "01012345678", null,
             Instant.parse("2026-10-01T00:00:00Z"), LocalDate.of(2026, 10, 13));
     private final PortOneIdentityVerificationService service = new PortOneIdentityVerificationService(
