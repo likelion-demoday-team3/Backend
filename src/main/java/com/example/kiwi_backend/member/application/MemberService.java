@@ -27,6 +27,10 @@ public class MemberService {
         return MyInfoResponse.from(findMember(memberId));
     }
 
+    public void changeName(Long memberId, String name) {
+        findMember(memberId).changeName(name);
+    }
+
     public void changePhoneNumber(Long memberId, String phoneNumber) {
         findMember(memberId).changePhoneNumber(phoneNumber);
     }

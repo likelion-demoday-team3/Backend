@@ -3,6 +3,7 @@ package com.example.kiwi_backend.member.api;
 import com.example.kiwi_backend.common.response.ApiResponse;
 import com.example.kiwi_backend.common.security.AuthUser;
 import com.example.kiwi_backend.member.api.dto.InstagramIdRequest;
+import com.example.kiwi_backend.member.api.dto.NameRequest;
 import com.example.kiwi_backend.member.api.dto.IdentityVerificationRequest;
 import com.example.kiwi_backend.member.api.dto.IdentityVerificationResponse;
 import com.example.kiwi_backend.member.api.dto.IdentityVerificationStartResponse;
@@ -44,6 +45,13 @@ public class MemberController {
     @GetMapping
     public ApiResponse<MyInfoResponse> getMyInfo(@AuthenticationPrincipal AuthUser authUser) {
         return ApiResponse.ok(memberService.getMyInfo(authUser.memberId()));
+    }
+
+    @PutMapping("/name")
+    public ApiResponse<Void> changeName(@AuthenticationPrincipal AuthUser authUser,
+                                        @Valid @RequestBody NameRequest request) {
+        memberService.changeName(authUser.memberId(), request.name());
+        return ApiResponse.ok();
     }
 
     @PutMapping("/phone")
