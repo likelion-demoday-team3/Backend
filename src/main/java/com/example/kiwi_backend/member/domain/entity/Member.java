@@ -134,6 +134,12 @@ public class Member extends BaseTimeEntity {
         return member;
     }
 
+    /** 이름을 교체. 비워둘 수 없다. */
+    public void changeName(String name) {
+        ensureNotWithdrawn();
+        this.name = requireText(name, "이름");
+    }
+
     // ===== 연락처 =====
 
     /** 전화번호를 교체. 전화번호나 인스타 아이디 둘 중 하나는 존재해야 함. */
