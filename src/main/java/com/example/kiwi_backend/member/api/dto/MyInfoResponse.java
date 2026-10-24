@@ -13,6 +13,7 @@ import java.util.UUID;
 public record MyInfoResponse(
         UUID publicId,
         String email,
+        String name,
         String university,
         Gender gender,
         LocalDate birthDate,
@@ -23,6 +24,7 @@ public record MyInfoResponse(
         return new MyInfoResponse(
                 member.getPublicId(),
                 member.getEmail(),
+                member.getName(),
                 member.getUniversity(),
                 member.getGender(),
                 member.getBirthDate(),

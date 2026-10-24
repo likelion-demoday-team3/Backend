@@ -39,6 +39,7 @@ public class MemberRegistrarImpl implements MemberRegistrar {
 
         Member member = Member.register(
                 email,
+                command.name(),
                 command.passwordHash(),
                 command.university(),
                 command.gender(),

@@ -14,6 +14,7 @@ import java.time.LocalDate;
  */
 public record SignupRequest(
         @NotBlank String signupToken, //여기서 이메일을 꺼내서 member의 email로 저장
+        @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(min = 8, max = 64) String password,
         @NotNull Gender gender,
         @NotNull @Past LocalDate birthDate,
