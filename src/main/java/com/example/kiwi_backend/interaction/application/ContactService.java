@@ -26,6 +26,7 @@ public class ContactService {
     private final GemWallet wallet;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final SessionQueryService sessionQueries;
 
     @Transactional
     public ShareView send(Long sessionId, Long sender, Long receiver, ContactType type) {
@@ -120,7 +121,9 @@ public class ContactService {
     @Transactional(readOnly = true)
     public History<ShareView> shareHistory(Long memberId, int page, int size) {
         var result = shares.history(memberId, page(page, size));
-        return new History<>(result.map(this::shareView).getContent(), result.hasNext());
+        // 같은 세션 기록이 여러 건이어도 세션 정보는 한 번만 조회한다
+        Map<Long, SessionInfo> cache = new HashMap<>();
+        return new History<>(result.map(share -> shareView(share, cache)).getContent(), result.hasNext());
     }
 
     @Transactional(readOnly = true)
@@ -134,10 +137,24 @@ public class ContactService {
     }
 
     private ShareView shareView(ContactShare share) {
-        String value = contacts.contacts(share.getSenderId()).get(share.getContactType());
-        return new ShareView(share.getId(), share.getSessionId(), share.getSenderId(), share.getReceiverId(),
-                share.getContactType(), value, share.getShareType(), share.getCreatedAt());
+        return shareView(share, new HashMap<>());
     }
+
+    private ShareView shareView(ContactShare share, Map<Long, SessionInfo> cache) {
+        String value = contacts.contacts(share.getSenderId()).get(share.getContactType());
+        var session = cache.computeIfAbsent(share.getSessionId(), this::sessionInfo);
+        return new ShareView(share.getId(), share.getSessionId(), share.getSenderId(), share.getReceiverId(),
+                share.getContactType(), value, share.getShareType(), share.getCreatedAt(),
+                session.startTime(), session.aliases().get(share.getSenderId()), session.aliases().get(share.getReceiverId()));
+    }
+
+    private SessionInfo sessionInfo(Long sessionId) {
+        Map<Long, String> aliases = new HashMap<>();
+        sessionQueries.getLiveParticipants(sessionId).forEach(p -> aliases.put(p.memberId(), p.alias()));
+        return new SessionInfo(sessionQueries.getStartTime(sessionId), aliases);
+    }
+
+    private record SessionInfo(Instant startTime, Map<Long, String> aliases) { }
 
     private RequestView requestView(ContactRequest request) {
         return new RequestView(request.getId(), request.getSessionId(), request.getRequesterId(), request.getTargetId(),
@@ -147,7 +164,8 @@ public class ContactService {
     public record ContactReceived(Long sessionId, Long shareId) { }
     public record History<T>(List<T> items, boolean hasNext) { }
     public record ShareView(Long id, Long sessionId, Long senderId, Long receiverId, ContactType contactType,
-                            String contactValue, ContactShare.ShareType shareType, Instant createdAt) { }
+                            String contactValue, ContactShare.ShareType shareType, Instant createdAt,
+                            Instant sessionStartTime, String senderAlias, String receiverAlias) { }
     public record RequestView(Long id, Long sessionId, Long requesterId, Long targetId, ContactType contactType,
                               ContactRequest.Status status, int chargedGem, Instant createdAt, Instant respondedAt) { }
 }
