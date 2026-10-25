@@ -120,7 +120,16 @@ public class ContactService {
 
     @Transactional(readOnly = true)
     public History<ShareView> shareHistory(Long memberId, int page, int size) {
-        var result = shares.history(memberId, page(page, size));
+        return shareHistory(memberId, null, page, size);
+    }
+
+    /** direction이 없으면 보낸 것과 받은 것 모두, SENT/RECEIVED면 한쪽만 */
+    @Transactional(readOnly = true)
+    public History<ShareView> shareHistory(Long memberId, Direction direction, int page, int size) {
+        var pageable = page(page, size);
+        var result = direction == null ? shares.history(memberId, pageable)
+                : direction == Direction.SENT ? shares.sentHistory(memberId, pageable)
+                : shares.receivedHistory(memberId, pageable);
         // 같은 세션 기록이 여러 건이어도 세션 정보는 한 번만 조회한다
         Map<Long, SessionInfo> cache = new HashMap<>();
         return new History<>(result.map(share -> shareView(share, cache)).getContent(), result.hasNext());
@@ -161,6 +170,7 @@ public class ContactService {
                 request.getContactType(), request.getStatus(), request.getChargedGem(), request.getCreatedAt(), request.getRespondedAt());
     }
 
+    public enum Direction { SENT, RECEIVED }
     public record ContactReceived(Long sessionId, Long shareId) { }
     public record History<T>(List<T> items, boolean hasNext) { }
     public record ShareView(Long id, Long sessionId, Long senderId, Long receiverId, ContactType contactType,

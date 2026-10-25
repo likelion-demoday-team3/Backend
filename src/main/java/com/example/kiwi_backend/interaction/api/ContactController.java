@@ -40,8 +40,9 @@ public class ContactController {
     }
     @GetMapping("/contact-history/shares")
     public ApiResponse<ContactService.History<ContactService.ShareView>> shares(@AuthenticationPrincipal AuthUser user,
+            @RequestParam(required = false) ContactService.Direction direction,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(contacts.shareHistory(user.memberId(), page, size));
+        return ApiResponse.ok(contacts.shareHistory(user.memberId(), direction, page, size));
     }
     @GetMapping("/contact-history/requests")
     public ApiResponse<ContactService.History<ContactService.RequestView>> requests(@AuthenticationPrincipal AuthUser user,
