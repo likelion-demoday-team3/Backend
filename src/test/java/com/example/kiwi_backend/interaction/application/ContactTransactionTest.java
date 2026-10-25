@@ -68,6 +68,9 @@ class ContactTransactionTest {
         assertThat(received.senderAlias()).isEqualTo("alias-" + sender);
         assertThat(received.receiverAlias()).isEqualTo("alias-" + target);
         assertThat(received.sessionStartTime()).isEqualTo(sessions.findById(sessionId).orElseThrow().getStartTime());
+        assertThat(service.shareHistory(sender, ContactService.Direction.SENT, 0, 20).items()).hasSize(1);
+        assertThat(service.shareHistory(sender, ContactService.Direction.RECEIVED, 0, 20).items()).isEmpty();
+        assertThat(service.shareHistory(target, ContactService.Direction.RECEIVED, 0, 20).items()).hasSize(1);
         assertThat(service.shareHistory(sender + 2, 0, 20).items()).isEmpty();
         windows.closeContacts(sessionId, sender);
         assertThatThrownBy(() -> service.send(sessionId, sender, sender + 2, ContactType.PHONE))
