@@ -1,9 +1,11 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
 import com.example.kiwi_backend.contract.dto.CompatibilitySummary;
 import com.example.kiwi_backend.contract.query.CompatQueryService;
 import com.example.kiwi_backend.contract.query.ProfileQueryService;
+import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
@@ -23,6 +25,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +41,7 @@ public class LiveRoundBroadcastService {
     private final ProfileQueryService profileQueryService;
     private final ObjectProvider<CompatQueryService> compatQueryServiceProvider;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider;
 
     public LiveRoundBroadcastResult broadcastRoundAssignments(Long sessionId, int roundNumber) {
         if (sessionId == null) {
@@ -84,11 +88,14 @@ public class LiveRoundBroadcastService {
             compatibilityByRoomId.put(room.getId(), compatibility);
         }
 
+        Map<Long, String> aliases = aliasesOf(sessionId);
         int recipientCount = 0;
         for (LiveRoom room : rooms) {
             sendAssignment(round, room, room.getMaleMemberId(), room.getFemaleMemberId(),
+                    aliases.get(room.getFemaleMemberId()),
                     cards.get(room.getFemaleMemberId()), compatibilityByRoomId.get(room.getId()));
             sendAssignment(round, room, room.getFemaleMemberId(), room.getMaleMemberId(),
+                    aliases.get(room.getMaleMemberId()),
                     cards.get(room.getMaleMemberId()), compatibilityByRoomId.get(room.getId()));
             recipientCount += 2;
         }
@@ -127,7 +134,22 @@ public class LiveRoundBroadcastService {
         }
     }
 
+    /** 세션 출석자의 memberId → 별칭. 조회할 수 없으면 빈 맵 (별칭은 화면 표시용이라 배정 자체를 막지 않는다) */
+    private Map<Long, String> aliasesOf(Long sessionId) {
+        SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
+        if (sessionQueryService == null) {
+            return Map.of();
+        }
+        List<LiveParticipant> participants = sessionQueryService.getLiveParticipants(sessionId);
+        if (participants == null) {
+            return Map.of();
+        }
+        return participants.stream()
+                .collect(Collectors.toMap(LiveParticipant::memberId, LiveParticipant::alias, (first, second) -> first));
+    }
+
     private void sendAssignment(LiveRound round, LiveRoom room, Long memberId, Long partnerMemberId,
+                                String partnerAlias,
                                 PartnerProfileCard partnerProfileCard, CompatibilitySummary compatibility) {
         messagingTemplate.convertAndSendToUser(
                 memberId.toString(),
@@ -140,6 +162,7 @@ public class LiveRoundBroadcastService {
                         room.getTableNo(),
                         memberId,
                         partnerMemberId,
+                        partnerAlias,
                         partnerProfileCard,
                         compatibility
                 )
