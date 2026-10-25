@@ -230,6 +230,14 @@ public class DatingSession extends BaseTimeEntity {
         return status == SessionStatus.RECRUITING && now.isBefore(applyDeadline());
     }
 
+    /**
+     * 지금 본인 취소를 할 수 있는가: 모집 중(신청 마감 전)이거나, 진행 확정(READY) 뒤 로비 마감 전.
+     * READY 취소는 시작 30분 이내라 환불 규칙상 항상 0%다. 로비 마감은 APPLIED만 처리하므로 취소자는 빠진다
+     */
+    public boolean isSelfCancellable(Instant now) {
+        return isApplicationOpen(now) || status == SessionStatus.READY;
+    }
+
     /** 30분 전 진행 판단을 할 차례인가 */
     public boolean isDueForDecision(Instant now) {
         return status == SessionStatus.RECRUITING && !now.isBefore(applyDeadline());
