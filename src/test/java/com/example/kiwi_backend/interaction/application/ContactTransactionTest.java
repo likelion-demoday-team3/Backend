@@ -63,6 +63,11 @@ class ContactTransactionTest {
         assertThat(wallet.getBalance(sender).gemBalance()).isEqualTo(1);
         assertThat(service.shareHistory(target, 0, 20).items()).extracting(ContactService.ShareView::contactValue)
                 .containsExactly("01000000000");
+        // 기록 화면에 상대 닉네임과 소개팅 일시를 보여줄 수 있어야 한다
+        var received = service.shareHistory(target, 0, 20).items().getFirst();
+        assertThat(received.senderAlias()).isEqualTo("alias-" + sender);
+        assertThat(received.receiverAlias()).isEqualTo("alias-" + target);
+        assertThat(received.sessionStartTime()).isEqualTo(sessions.findById(sessionId).orElseThrow().getStartTime());
         assertThat(service.shareHistory(sender + 2, 0, 20).items()).isEmpty();
         windows.closeContacts(sessionId, sender);
         assertThatThrownBy(() -> service.send(sessionId, sender, sender + 2, ContactType.PHONE))

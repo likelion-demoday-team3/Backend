@@ -20,6 +20,7 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 class VoteTransactionTest {
     @Autowired VoteService service;
+    @Autowired MatchHistoryService history;
     @Autowired VoteRepository votes;
     @Autowired MatchResultRepository matches;
     @Autowired DatingSessionRepository sessions;
@@ -68,6 +69,14 @@ class VoteTransactionTest {
         assertThat(service.summary(sessionId, sender).coupleCount()).isEqualTo(1);
         assertThat(matches.findAllBySessionId(sessionId)).hasSize(1);
         assertThat(sessions.findById(sessionId).orElseThrow().getStatus()).isEqualTo(SessionStatus.COMPLETED);
+        // 마이페이지 매칭 기록: 성공한 사람은 상대 별칭까지, 실패한 사람도 세션은 기록에 남는다
+        var matched = history.history(sender).stream().filter(item -> item.sessionId().equals(sessionId)).findFirst().orElseThrow();
+        assertThat(matched.matched()).isTrue();
+        assertThat(matched.partnerMemberId()).isEqualTo(receiver);
+        assertThat(matched.partnerAlias()).isEqualTo("alias-" + receiver);
+        var failed = history.history(80003L).stream().filter(item -> item.sessionId().equals(sessionId)).findFirst().orElseThrow();
+        assertThat(failed.matched()).isFalse();
+        assertThat(failed.partnerAlias()).isNull();
     }
 
     @Test

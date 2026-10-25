@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.session.application.service;
 
 import com.example.kiwi_backend.common.exception.NotFoundException;
+import com.example.kiwi_backend.contract.dto.AttendedSession;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 
 /** A(realtime·live)가 쓰는 세션 조회 창구 */
@@ -81,6 +83,19 @@ public class SessionQueryServiceImpl implements SessionQueryService {
     public List<LiveParticipant> getLiveParticipants(Long sessionId) {
         return participantRepository.findAllBySessionIdAndStatus(sessionId, ParticipantStatus.ATTENDED).stream()
                 .map(p -> new LiveParticipant(p.getMemberId(), p.getGender(), p.getAlias()))
+                .toList();
+    }
+
+    @Override
+    public List<AttendedSession> findCompletedAttendances(Long memberId) {
+        List<Long> attendedSessionIds = participantRepository.findAllByMemberIdOrderByAppliedAtDesc(memberId).stream()
+                .filter(p -> p.getStatus() == ParticipantStatus.ATTENDED)
+                .map(SessionParticipant::getSessionId)
+                .toList();
+        return sessionRepository.findAllById(attendedSessionIds).stream()
+                .filter(s -> s.getStatus() == SessionStatus.COMPLETED)
+                .sorted(Comparator.comparing(DatingSession::getStartTime).reversed())
+                .map(s -> new AttendedSession(s.getId(), s.getStartTime()))
                 .toList();
     }
 }
