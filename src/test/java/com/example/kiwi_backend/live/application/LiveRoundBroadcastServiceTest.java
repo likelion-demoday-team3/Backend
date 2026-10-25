@@ -1,9 +1,12 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
 import com.example.kiwi_backend.contract.dto.CompatibilitySummary;
 import com.example.kiwi_backend.contract.query.CompatQueryService;
 import com.example.kiwi_backend.contract.query.ProfileQueryService;
+import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.entity.LiveRoundIdleParticipant;
@@ -39,6 +42,8 @@ class LiveRoundBroadcastServiceTest {
     private final ObjectProvider<CompatQueryService> compatQueryServiceProvider = mock(ObjectProvider.class);
     private final CompatQueryService compatQueryService = mock(CompatQueryService.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
+    private final ObjectProvider<SessionQueryService> sessionQueryServiceProvider = mock(ObjectProvider.class);
+    private final SessionQueryService sessionQueryService = mock(SessionQueryService.class);
 
     private final LiveRoundBroadcastService service = new LiveRoundBroadcastService(
             liveRoundRepository,
@@ -46,7 +51,8 @@ class LiveRoundBroadcastServiceTest {
             liveRoundIdleParticipantRepository,
             profileQueryService,
             compatQueryServiceProvider,
-            messagingTemplate
+            messagingTemplate,
+            sessionQueryServiceProvider
     );
 
     @Test
@@ -67,6 +73,13 @@ class LiveRoundBroadcastServiceTest {
                 .thenReturn(new CompatibilitySummary(82, "대화 취향이 비슷합니다"));
         when(compatQueryService.getCompatibility(10L, 102L, 202L))
                 .thenReturn(new CompatibilitySummary(74, "관심사가 겹칩니다"));
+        when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
+        when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
+                new LiveParticipant(101L, Gender.MALE, "졸린 수달"),
+                new LiveParticipant(201L, Gender.FEMALE, "배고픈 판다"),
+                new LiveParticipant(102L, Gender.MALE, "신난 펭귄"),
+                new LiveParticipant(202L, Gender.FEMALE, "용감한 다람쥐")
+        ));
 
         LiveRoundBroadcastResult result = service.broadcastRoundAssignments(10L, 1);
 
@@ -95,6 +108,9 @@ class LiveRoundBroadcastServiceTest {
         assertThat(messageCaptor.getAllValues())
                 .extracting(message -> message.partnerProfileCard().memberId())
                 .containsExactly(201L, 101L, 202L, 102L);
+        assertThat(messageCaptor.getAllValues())
+                .extracting(LiveRoundAssignmentMessage::partnerAlias)
+                .containsExactly("배고픈 판다", "졸린 수달", "용감한 다람쥐", "신난 펭귄");
         assertThat(messageCaptor.getAllValues())
                 .extracting(message -> message.compatibility().score())
                 .containsExactly(82, 82, 74, 74);

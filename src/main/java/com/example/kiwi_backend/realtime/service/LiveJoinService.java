@@ -1,5 +1,7 @@
 package com.example.kiwi_backend.realtime.service;
 
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
+import com.example.kiwi_backend.contract.query.ProfileQueryService;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
@@ -14,6 +16,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -23,6 +27,7 @@ public class LiveJoinService {
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoomRepository liveRoomRepository;
     private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository;
+    private final ProfileQueryService profileQueryService;
 
     public LiveJoinResponse join(Long sessionId, Long memberId) {
         if (sessionId == null) {
@@ -66,6 +71,8 @@ public class LiveJoinService {
                     round.getRoundNumber(),
                     null,
                     null,
+                    null,
+                    null,
                     null
             );
         }
@@ -73,6 +80,7 @@ public class LiveJoinService {
     }
 
     private LiveJoinResponse assigned(LiveRound round, LiveRoom room, Long memberId) {
+        Long partnerMemberId = findPartnerMemberId(room, memberId);
         return new LiveJoinResponse(
                 round.getSessionId(),
                 memberId,
@@ -81,7 +89,9 @@ public class LiveJoinService {
                 round.getRoundNumber(),
                 room.getId(),
                 room.getTableNo(),
-                findPartnerMemberId(room, memberId)
+                partnerMemberId,
+                findAlias(round.getSessionId(), partnerMemberId),
+                profileQueryService.getCards(List.of(partnerMemberId)).get(partnerMemberId)
         );
     }
 
@@ -94,8 +104,27 @@ public class LiveJoinService {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null
         );
+    }
+
+    /** 세션 안에서의 상대 별칭. 조회할 수 없으면 null (화면 표시용이라 재접속을 막지 않는다) */
+    private String findAlias(Long sessionId, Long memberId) {
+        SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
+        if (sessionQueryService == null) {
+            return null;
+        }
+        List<LiveParticipant> participants = sessionQueryService.getLiveParticipants(sessionId);
+        if (participants == null) {
+            return null;
+        }
+        return participants.stream()
+                .filter(participant -> participant.memberId().equals(memberId))
+                .map(LiveParticipant::alias)
+                .findFirst()
+                .orElse(null);
     }
 
     private Long findPartnerMemberId(LiveRoom room, Long memberId) {

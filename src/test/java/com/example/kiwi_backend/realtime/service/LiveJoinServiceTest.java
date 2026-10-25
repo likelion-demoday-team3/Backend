@@ -1,5 +1,9 @@
 package com.example.kiwi_backend.realtime.service;
 
+import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.contract.dto.LiveParticipant;
+import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
+import com.example.kiwi_backend.contract.query.ProfileQueryService;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
@@ -14,6 +18,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,11 +37,14 @@ class LiveJoinServiceTest {
     private final LiveRoundIdleParticipantRepository liveRoundIdleParticipantRepository =
             mock(LiveRoundIdleParticipantRepository.class);
 
+    private final ProfileQueryService profileQueryService = mock(ProfileQueryService.class);
+
     private final LiveJoinService service = new LiveJoinService(
             sessionQueryServiceProvider,
             liveRoundRepository,
             liveRoomRepository,
-            liveRoundIdleParticipantRepository
+            liveRoundIdleParticipantRepository,
+            profileQueryService
     );
 
     private void allowParticipant(Long memberId) {
@@ -72,6 +81,13 @@ class LiveJoinServiceTest {
         )).thenReturn(Optional.of(round));
         when(liveRoomRepository.findByRoundIdAndMemberId(1L, 101L))
                 .thenReturn(Optional.of(room));
+        when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
+                new LiveParticipant(101L, Gender.MALE, "졸린 수달"),
+                new LiveParticipant(201L, Gender.FEMALE, "배고픈 판다")
+        ));
+        PartnerProfileCard partnerCard = new PartnerProfileCard(
+                201L, "서강대학교", "곰상", "전시", "전화", "천천히", List.of("러닝"));
+        when(profileQueryService.getCards(List.of(201L))).thenReturn(Map.of(201L, partnerCard));
 
         LiveJoinResponse response = service.join(10L, 101L);
 
@@ -81,6 +97,9 @@ class LiveJoinServiceTest {
         assertThat(response.roomId()).isEqualTo(100L);
         assertThat(response.tableNo()).isEqualTo(2);
         assertThat(response.partnerMemberId()).isEqualTo(201L);
+        // 재접속해도 상대 별칭과 프로필 카드를 다시 받는다
+        assertThat(response.partnerAlias()).isEqualTo("배고픈 판다");
+        assertThat(response.partnerProfileCard()).isEqualTo(partnerCard);
     }
 
     @Test
