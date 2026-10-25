@@ -40,8 +40,8 @@ public class Member extends BaseTimeEntity {
     @Column(name = "public_id", nullable = false, unique = true, updatable = false)
     private UUID publicId;
 
-    /** 로그인 ID, 재학생 인증 */
-    @Column(nullable = false, unique = true, updatable = false)
+    /** 로그인 ID, 재학생 인증. 탈퇴 시 같은 이메일로 재가입할 수 있도록 값을 풀어준다 */
+    @Column(nullable = false, unique = true)
     private String email;
 
     /** 회원 이름, 가입 시 입력. 기존 회원은 없을 수 있다 */
@@ -224,6 +224,9 @@ public class Member extends BaseTimeEntity {
         this.status = MemberStatus.WITHDRAWN;
         this.phoneNumber = null;
         this.instagramId = null;
+        // 탈퇴 회원 행은 기록용으로 남기되, 원래 이메일은 풀어 같은 이메일로 재가입할 수 있게 한다.
+        // publicId를 붙여 유니크 제약과 충돌하지 않도록 한다.
+        this.email = this.email + "+withdrawn+" + this.publicId;
     }
 
     public boolean isActive() {
