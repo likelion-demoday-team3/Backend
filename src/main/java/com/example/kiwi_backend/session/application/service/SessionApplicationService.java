@@ -100,7 +100,7 @@ public class SessionApplicationService {
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
 
         Instant now = clock.instant();
-        if (!session.isSelfCancellable(now)) {
+        if (!session.isApplicationOpen(now)) {
             throw new IllegalStateException("취소할 수 있는 기간이 지났습니다");
         }
 
