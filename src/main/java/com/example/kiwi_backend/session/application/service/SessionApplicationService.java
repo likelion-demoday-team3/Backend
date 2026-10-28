@@ -49,9 +49,6 @@ public class SessionApplicationService {
         if (!member.active()) {
             throw new IllegalStateException("이용할 수 없는 계정입니다");
         }
-        if (!member.identityVerified()) {
-            throw new IllegalStateException("세션 신청 전에 PortOne 본인인증을 완료해주세요");
-        }
 
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
