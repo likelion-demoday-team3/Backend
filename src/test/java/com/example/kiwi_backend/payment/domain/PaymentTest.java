@@ -25,10 +25,11 @@ class PaymentTest {
         assertThat(payment.getAmount()).isEqualTo(3000);
         assertThat(payment.getGrantedGem()).isEqualTo(33);
         assertThat(payment.getProductId()).isEqualTo(5L);
-        assertThat(payment.isApprovable()).isFalse();   // tid 받기 전
+        assertThat(payment.isApprovable()).isTrue();   // 나이스페이는 승인 단계에서 tid를 받는다
 
         payment.attachPaymentKey("T1");
-        assertThat(payment.isApprovable()).isTrue();
+        assertThat(payment.isApprovable()).isFalse();   // 이미 tid를 받아 승인을 진행한 건
+        assertThatThrownBy(() -> payment.attachPaymentKey("T2")).isInstanceOf(IllegalStateException.class);
     }
 
     @Test

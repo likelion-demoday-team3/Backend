@@ -67,7 +67,9 @@ docker compose up -d --build
 | `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | `https://kiwi.site` (Vercel 주소. 끝에 `/` 없이) |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24` |
 | `JWT_SECRET`, `APP_CRYPTO_KEY` | 각각 `openssl rand -base64 32`. **한 번 정하면 바꾸지 않는다** (`APP_CRYPTO_KEY`를 바꾸면 암호화된 연락처를 읽을 수 없다) |
-| `KAKAOPAY_SECRET_KEY` | 카카오페이 Secret key |
+| `NICEPAY_CLIENT_ID`, `NICEPAY_SECRET_KEY` | 나이스페이 클라이언트 키, 시크릿 키 (start.nicepay.co.kr → 개발정보) |
+| `NICEPAY_BASE_URL` | 샌드박스 키는 `https://sandbox-api.nicepay.co.kr`(기본값), 운영 키는 `https://api.nicepay.co.kr` |
+| `NICEPAY_RETURN_URL` | `https://api.kiwi.site/payments/nicepay/return` (결제창 인증 후 나이스페이가 돌아올 백엔드 주소) |
 | `SMTP_*` | 운영 프로필은 실제 메일을 보낸다. 비어 있으면 가입 인증 메일이 나가지 않는다 |
 
 `.env`는 git에 올라가지 않는다. 값은 팀 비밀 저장소 등 안전한 곳에 따로 보관한다.
@@ -84,7 +86,7 @@ docker compose logs -f app                       # 앱 로그
 
 ## 6. 외부 서비스 설정
 
-- **카카오페이**: developers.kakaopay.com → 내 애플리케이션 → 플랫폼 → Web → 사이트 도메인에 프론트 주소(`https://kiwi.site`) 추가. 없으면 결제 준비가 400으로 실패한다
+- **나이스페이**: 결제창은 프론트에서 열고, 인증 결과는 나이스페이가 `NICEPAY_RETURN_URL`(백엔드)로 form POST 한다. 이 주소가 외부에서 https로 열려 있어야 승인된다. 키는 샌드박스와 운영이 다르므로 `NICEPAY_BASE_URL`도 키에 맞춘다
 - **프론트(Vercel)**: API 주소 `https://api.kiwi.site`, WebSocket 주소 `wss://api.kiwi.site/ws`
 
 ## 7. 업데이트 배포
@@ -120,4 +122,4 @@ gunzip -c ~/kiwi-backups/kiwi-YYYYMMDDTHHMMSSZ.sql.gz | docker compose exec -T d
 
 - TURN 서버: 없으면 일부 모바일·회사망에서 영상 연결이 안 될 수 있다 (`RTC_TURN_*`, production-readiness.md 참고)
 - Swagger UI(`/swagger-ui`)가 공개되어 있다. 운영에서 숨길지 정한다
-- 카카오페이 실결제는 계약 후 받은 CID로 `KAKAOPAY_CID`를 바꾼다
+- 나이스페이 실결제는 가맹 계약 후 받은 운영 키로 `NICEPAY_CLIENT_ID`, `NICEPAY_SECRET_KEY`를 바꾸고 `NICEPAY_BASE_URL=https://api.nicepay.co.kr`로 바꾼다
