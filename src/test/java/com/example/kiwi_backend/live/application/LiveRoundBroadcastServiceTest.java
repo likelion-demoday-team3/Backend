@@ -28,6 +28,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -114,6 +115,32 @@ class LiveRoundBroadcastServiceTest {
         assertThat(messageCaptor.getAllValues())
                 .extracting(message -> message.compatibility().score())
                 .containsExactly(82, 82, 74, 74);
+    }
+
+    @Test
+    void callTestBroadcastUsesPlaceholderCompatibilityWithoutQueryingLinerResults() {
+        LiveRound round = startedRound(10L, 1L, 1);
+        LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
+        when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1)).thenReturn(Optional.of(round));
+        when(liveRoomRepository.findAllByRoundIdOrderByTableNoAsc(1L)).thenReturn(List.of(room));
+        when(profileQueryService.getCards(Set.of(101L, 201L))).thenReturn(Map.of(
+                101L, card(101L), 201L, card(201L)));
+        when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
+        when(sessionQueryService.isCallTestSession(10L)).thenReturn(true);
+        when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
+                new LiveParticipant(101L, Gender.MALE, "host"),
+                new LiveParticipant(201L, Gender.FEMALE, "partner")));
+
+        service.broadcastRoundAssignments(10L, 1);
+
+        ArgumentCaptor<LiveRoundAssignmentMessage> messageCaptor =
+                ArgumentCaptor.forClass(LiveRoundAssignmentMessage.class);
+        verify(messagingTemplate, org.mockito.Mockito.times(2)).convertAndSendToUser(
+                anyString(), anyString(), messageCaptor.capture());
+        assertThat(messageCaptor.getAllValues())
+                .extracting(LiveRoundAssignmentMessage::compatibility)
+                .containsOnly(new CompatibilitySummary(0, "통화 연결 테스트"));
+        verifyNoInteractions(compatQueryServiceProvider, compatQueryService);
     }
 
     @Test

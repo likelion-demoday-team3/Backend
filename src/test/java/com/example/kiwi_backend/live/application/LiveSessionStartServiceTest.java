@@ -50,6 +50,26 @@ class LiveSessionStartServiceTest {
     }
 
     @Test
+    void testCallUsesTheExplicitTwoPartnerOrderWithThreeAttendees() {
+        List<LiveParticipant> testParticipants = List.of(
+                new LiveParticipant(7L, Gender.MALE, "host"),
+                new LiveParticipant(12L, Gender.FEMALE, "first"),
+                new LiveParticipant(15L, Gender.FEMALE, "second"));
+        when(query.isCallTestSession(10L)).thenReturn(true);
+        when(query.getCallTestParticipantOrder(10L))
+                .thenReturn(new CallTestParticipantOrder(7L, 12L, 15L));
+        when(command.finalizeAttendance(eq(10L), anySet()))
+                .thenReturn(AttendanceResult.proceeded(10L, testParticipants, now.plusSeconds(30)));
+
+        service.startLiveSession(10L);
+
+        verify(schedules).createSchedule(eq(10L), argThat(plans -> plans.size() == 2
+                && plans.get(0).rooms().get(0).maleMemberId().equals(7L)
+                && plans.get(0).rooms().get(0).femaleMemberId().equals(12L)
+                && plans.get(1).rooms().get(0).femaleMemberId().equals(15L)));
+    }
+
+    @Test
     void cancellationDoesNotGenerateSchedule() {
         when(command.finalizeAttendance(eq(10L), anySet())).thenReturn(AttendanceResult.cancelled(10L));
         service.startLiveSession(10L);
