@@ -26,6 +26,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String NICEPAY_RETURN_PATH = "/payments/nicepay/return";
+
     private final JwtProvider jwtProvider;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
@@ -57,7 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         // 나이스페이가 브라우저로 form POST 하는 결제창 returnUrl. 로그인 토큰이 없어 서명으로 검증한다
-                        .requestMatchers(HttpMethod.POST, "/payments/nicepay/return").permitAll()
+                        .requestMatchers(HttpMethod.POST, NICEPAY_RETURN_PATH).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/start").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/scheduler/start").hasRole("ADMIN")
@@ -78,6 +80,10 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        return source;
+        // 나이스페이 returnUrl은 결제창이 브라우저를 이동시키는 form POST라서 Origin이 결제창(또는 그 페이지) 주소로 붙는다.
+        // 응답은 redirect뿐이라 다른 사이트가 읽어 갈 내용이 없으므로 CORS 검사를 하지 않는다 (위변조는 서명으로 확인).
+        return request -> NICEPAY_RETURN_PATH.equals(request.getRequestURI())
+                ? null
+                : source.getCorsConfiguration(request);
     }
 }

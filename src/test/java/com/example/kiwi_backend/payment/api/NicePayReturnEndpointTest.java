@@ -60,6 +60,31 @@ class NicePayReturnEndpointTest {
     }
 
     @Test
+    void returnFromNicePayPageIsNotRejectedByCors() throws Exception {
+        when(paymentService.approve(any())).thenReturn(new PaymentApproveResponse(ORDER_ID, 33, 133));
+
+        // 결제창이 보내는 form POST에는 허용 목록에 없는 Origin(결제창 주소, 또는 "null")이 붙는다
+        for (String origin : new String[]{"https://pay.nicepay.co.kr", "null"}) {
+            mockMvc.perform(post("/payments/nicepay/return")
+                            .header("Origin", origin)
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                            .param("authResultCode", "0000")
+                            .param("orderId", ORDER_ID)
+                            .param("amount", "3000"))
+                    .andExpect(status().isSeeOther());
+        }
+    }
+
+    @Test
+    void otherApisStillRejectUnknownOrigins() throws Exception {
+        mockMvc.perform(post("/payments/nicepay/ready")
+                        .header("Origin", "https://evil.example")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":1}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void failedAuthenticationMarksFailedAndRedirectsToFrontendFailure() throws Exception {
         mockMvc.perform(post("/payments/nicepay/return")
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
