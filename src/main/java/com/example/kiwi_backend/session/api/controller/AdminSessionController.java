@@ -2,6 +2,7 @@ package com.example.kiwi_backend.session.api.controller;
 
 import com.example.kiwi_backend.common.response.ApiResponse;
 import com.example.kiwi_backend.session.api.dto.SessionCreateRequest;
+import com.example.kiwi_backend.session.api.dto.SessionDeleteResponse;
 import com.example.kiwi_backend.session.application.service.AdminSessionService;
 import com.example.kiwi_backend.session.application.service.SessionDecisionService;
 import jakarta.validation.Valid;
@@ -42,5 +43,11 @@ public class AdminSessionController {
     public ApiResponse<Void> cancel(@PathVariable Long sessionId) {
         sessionDecisionService.cancelByAdmin(sessionId);
         return ApiResponse.ok();
+    }
+
+    /** 운영자 삭제. 신청 기록이 없으면 지우고, 있으면 전원 100% 환불 후 취소한다. 로비 마감 전까지만 가능 */
+    @DeleteMapping("/{sessionId}")
+    public ApiResponse<SessionDeleteResponse> delete(@PathVariable Long sessionId) {
+        return ApiResponse.ok(adminSessionService.delete(sessionId));
     }
 }

@@ -16,6 +16,9 @@ public interface SessionParticipantRepository extends JpaRepository<SessionParti
 
     Optional<SessionParticipant> findBySessionIdAndMemberId(Long sessionId, Long memberId);
 
+    /** 상태와 상관없이 신청 기록이 하나라도 있는가 (본인 취소한 신청도 포함) */
+    boolean existsBySessionId(Long sessionId);
+
     long countBySessionIdAndGenderAndStatus(Long sessionId, Gender gender, ParticipantStatus status);
 
     List<SessionParticipant> findAllBySessionIdAndStatus(Long sessionId, ParticipantStatus status);

@@ -56,9 +56,9 @@ public class SessionDecisionService {
         }
     }
 
-    /** 운영자 취소. 신청자 전원 100% 환불. 로비 마감 전까지만 가능 */
+    /** 운영자 취소. 신청자 전원 100% 환불. 로비 마감 전까지만 가능. 환불 대상(신청 중이던) 인원을 돌려준다 */
     @Transactional
-    public void cancelByAdmin(Long sessionId) {
+    public int cancelByAdmin(Long sessionId) {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
         // 로비 마감 전(SCHEDULED, RECRUITING, READY)까지만 허용.
@@ -69,6 +69,7 @@ public class SessionDecisionService {
         List<SessionParticipant> applied =
                 participantRepository.findAllBySessionIdAndStatus(sessionId, ParticipantStatus.APPLIED);
         cancelWithFullRefund(session, applied);
+        return applied.size();
     }
 
     /**
