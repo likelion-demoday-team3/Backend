@@ -83,6 +83,19 @@ public class DatingSession extends BaseTimeEntity {
     @Column(nullable = false)
     private int currentRoundNumber;
 
+    /** 관리자 전용 통화 연결 테스트 세션 */
+    @Column(name = "call_test", nullable = false)
+    private boolean callTest;
+
+    @Column(name = "call_test_host_member_id")
+    private Long callTestHostMemberId;
+
+    @Column(name = "call_test_first_partner_member_id")
+    private Long callTestFirstPartnerMemberId;
+
+    @Column(name = "call_test_second_partner_member_id")
+    private Long callTestSecondPartnerMemberId;
+
     /** 현재 단계 마감 시각 */
     private Instant phaseEndsAt;
 
@@ -102,6 +115,31 @@ public class DatingSession extends BaseTimeEntity {
         session.status = SessionStatus.SCHEDULED;
         session.liveStatus = LiveStatus.WAITING;
         session.currentRoundNumber = 0;
+        return session;
+    }
+
+    public static DatingSession createCallTest(Instant startTime,
+                                               Long hostMemberId,
+                                               Long firstPartnerMemberId,
+                                               Long secondPartnerMemberId,
+                                               Instant now) {
+        if (hostMemberId == null || firstPartnerMemberId == null || secondPartnerMemberId == null
+                || hostMemberId.equals(firstPartnerMemberId)
+                || hostMemberId.equals(secondPartnerMemberId)
+                || firstPartnerMemberId.equals(secondPartnerMemberId)) {
+            throw new IllegalArgumentException("테스트 참가자는 서로 다른 세 명이어야 합니다");
+        }
+
+        DatingSession session = new DatingSession();
+        session.applySettings(startTime, 3, 60, 120, 600, 0, 0, now);
+        session.status = SessionStatus.READY;
+        session.liveStatus = LiveStatus.WAITING;
+        session.currentRoundNumber = 0;
+        session.phaseEndsAt = session.firstRoundAt();
+        session.callTest = true;
+        session.callTestHostMemberId = hostMemberId;
+        session.callTestFirstPartnerMemberId = firstPartnerMemberId;
+        session.callTestSecondPartnerMemberId = secondPartnerMemberId;
         return session;
     }
 
@@ -245,6 +283,10 @@ public class DatingSession extends BaseTimeEntity {
 
     public Instant firstRoundAt() {
         return startTime.plus(FIRST_ROUND_AFTER);
+    }
+
+    public boolean isCallTest() {
+        return callTest;
     }
 
     /** 지금 로비에 들어올 수 있는가 (READY이고 오픈 ~ 마감 사이) */

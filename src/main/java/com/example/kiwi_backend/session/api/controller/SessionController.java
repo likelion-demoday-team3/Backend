@@ -22,8 +22,8 @@ public class SessionController {
 
     /** 신청 가능한 세션 목록 */
     @GetMapping
-    public ApiResponse<List<SessionSummaryResponse>> list() {
-        return ApiResponse.ok(sessionReadService.listUpcoming());
+    public ApiResponse<List<SessionSummaryResponse>> list(@AuthenticationPrincipal AuthUser authUser) {
+        return ApiResponse.ok(sessionReadService.listUpcoming(authUser.memberId()));
     }
 
     /** 내가 신청했던 세션들 */
