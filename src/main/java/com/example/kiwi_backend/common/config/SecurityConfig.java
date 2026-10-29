@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+                        // 나이스페이가 브라우저로 form POST 하는 결제창 returnUrl. 로그인 토큰이 없어 서명으로 검증한다
+                        .requestMatchers(HttpMethod.POST, "/payments/nicepay/return").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/start").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/live/sessions/*/scheduler/start").hasRole("ADMIN")

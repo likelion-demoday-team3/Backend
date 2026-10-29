@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * 보석 구매 결제 1건 (카카오페이).
+ * 보석 구매 결제 1건 (나이스페이).
  * 테이블에 updated_at이 없어 BaseTimeEntity를 상속하지 않는다.
  *
  * 금액과 지급 보석은 결제를 시작할 때의 상품 조건을 스냅샷으로 저장한다.
@@ -36,11 +36,11 @@ public class Payment {
     @Column(nullable = false, updatable = false)
     private Long productId;
 
-    /** 우리가 만든 주문 번호. 카카오페이 partner_order_id, 프론트와 주고받는 값 */
+    /** 우리가 만든 주문 번호. 나이스페이 orderId, 프론트와 주고받는 값 */
     @Column(nullable = false, unique = true, updatable = false, length = 100)
     private String orderId;
 
-    /** 카카오페이 결제 고유 번호(tid). 결제 준비 응답으로 받는다 */
+    /** 나이스페이 거래 키(tid). 결제창 인증 결과(returnUrl)로 받아 승인할 때 저장한다 */
     @Column(unique = true)
     private String paymentKey;
 
@@ -88,10 +88,10 @@ public class Payment {
         return payment;
     }
 
-    /** 카카오페이 결제 준비 응답의 tid를 붙인다 */
+    /** 나이스페이 인증 결과의 tid를 붙인다 */
     public void attachPaymentKey(String paymentKey) {
         if (status != PaymentStatus.READY || this.paymentKey != null) {
-            throw new IllegalStateException("결제 준비 중에만 tid를 저장할 수 있습니다");
+            throw new IllegalStateException("결제 대기 중에만 tid를 저장할 수 있습니다");
         }
         if (paymentKey == null || paymentKey.isBlank()) {
             throw new IllegalArgumentException("tid는 필수입니다");
@@ -128,9 +128,9 @@ public class Payment {
         this.cancelReason = reason;
     }
 
-    /** 승인 요청을 받을 수 있는 상태인가 (결제 준비가 끝나 tid가 있음) */
+    /** 승인 요청을 받을 수 있는 상태인가 (아직 tid를 받지 않은 대기 중 결제) */
     public boolean isApprovable() {
-        return status == PaymentStatus.READY && paymentKey != null;
+        return status == PaymentStatus.READY && paymentKey == null;
     }
 
     /** 환불 기간 안의 완료된 결제인가. 보석을 이미 썼는지는 지갑에서 회수할 때 판단한다 */

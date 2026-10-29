@@ -7,6 +7,7 @@ import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.GemResult;
 import com.example.kiwi_backend.contract.dto.MemberSummary;
 import com.example.kiwi_backend.contract.query.MemberQueryService;
+import com.example.kiwi_backend.payment.api.dto.NicePayReturnRequest;
 import com.example.kiwi_backend.payment.api.dto.PaymentApproveResponse;
 import com.example.kiwi_backend.payment.api.dto.PaymentHistoryResponse;
 import com.example.kiwi_backend.payment.api.dto.PaymentReadyResponse;
@@ -16,9 +17,9 @@ import com.example.kiwi_backend.payment.domain.entity.ShopProduct;
 import com.example.kiwi_backend.payment.domain.enumerated.PaymentStatus;
 import com.example.kiwi_backend.payment.domain.repository.PaymentRepository;
 import com.example.kiwi_backend.payment.domain.repository.ShopProductRepository;
-import com.example.kiwi_backend.payment.infra.kakaopay.KakaoPayApproval;
-import com.example.kiwi_backend.payment.infra.kakaopay.KakaoPayClient;
-import com.example.kiwi_backend.payment.infra.kakaopay.KakaoPayReady;
+import com.example.kiwi_backend.payment.infra.nicepay.NicePayApproval;
+import com.example.kiwi_backend.payment.infra.nicepay.NicePayCheckout;
+import com.example.kiwi_backend.payment.infra.nicepay.NicePayClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -38,16 +39,19 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
- * 카카오페이로 보석 구매·환불.
+ * 나이스페이로 보석 구매·환불.
  *
- * 동시성: 결제 행을 먼저 잠그고 카카오페이 호출과 보석 변동을 같은 트랜잭션에서 한다.
+ * 승인은 나이스페이가 브라우저를 통해 returnUrl로 보낸 인증 결과로 한다. 이 요청에는 로그인 토큰이 없으므로
+ * 회원 확인 대신 나이스페이 서명(signature)과 금액으로 위변조를 막는다. 보석은 결제를 시작한 회원에게 지급된다.
+ *
+ * 동시성: 결제 행을 먼저 잠그고 나이스페이 호출과 보석 변동을 같은 트랜잭션에서 한다.
  * 같은 주문에 승인 요청이 두 번 와도 두 번째는 첫 번째가 끝날 때까지 기다렸다가 PAID를 보고 그대로 돌아간다.
- * 잠금 순서는 항상 결제 → 지갑. 카카오페이 응답을 기다리는 동안(최대 수 초) 이 잠금을 쥐고 있다.
+ * 잠금 순서는 항상 결제 → 지갑. 나이스페이 응답을 기다리는 동안(최대 수 초) 이 잠금을 쥐고 있다.
  *
- * 우리 DB와 카카오페이가 어긋나는 경우:
- * - 승인: 카카오페이 승인 후 우리 쪽 처리(금액 검증, 보석 지급, 커밋)가 실패하면 카카오페이 결제를 바로 취소한다.
+ * 우리 DB와 나이스페이가 어긋나는 경우:
+ * - 승인: 나이스페이 승인 후 우리 쪽 처리(금액 검증, 보석 지급, 커밋)가 실패하면 나이스페이 결제를 바로 취소한다.
  *   그래서 승인 트랜잭션은 커밋 실패까지 잡을 수 있도록 @Transactional 대신 TransactionTemplate으로 감싼다.
- * - 환불: 보석 회수 → 카카오페이 취소 순서. 카카오페이 취소가 실패하면 보석 회수도 함께 롤백된다.
+ * - 환불: 보석 회수 → 나이스페이 취소 순서. 나이스페이 취소가 실패하면 보석 회수도 함께 롤백된다.
  *   취소 성공 뒤 커밋만 실패하는 경우는 자동 복구하지 않고 에러 로그를 남긴다.
  */
 @Slf4j
@@ -61,7 +65,7 @@ public class PaymentService {
     private final ShopProductRepository productRepository;
     private final MemberQueryService memberQueryService;
     private final GemWallet gemWallet;
-    private final KakaoPayClient kakaoPayClient;
+    private final NicePayClient nicePayClient;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final Duration refundWindow;
@@ -70,7 +74,7 @@ public class PaymentService {
                           ShopProductRepository productRepository,
                           MemberQueryService memberQueryService,
                           GemWallet gemWallet,
-                          KakaoPayClient kakaoPayClient,
+                          NicePayClient nicePayClient,
                           PlatformTransactionManager transactionManager,
                           Clock clock,
                           @Value("${app.payment.refund-window:7d}") Duration refundWindow) {
@@ -78,7 +82,7 @@ public class PaymentService {
         this.productRepository = productRepository;
         this.memberQueryService = memberQueryService;
         this.gemWallet = gemWallet;
-        this.kakaoPayClient = kakaoPayClient;
+        this.nicePayClient = nicePayClient;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.clock = clock;
         this.refundWindow = refundWindow;
@@ -86,7 +90,10 @@ public class PaymentService {
 
     // ===== 결제 준비 =====
 
-    /** 결제 행을 만들고 카카오페이 결제창 URL을 받는다. 카카오페이 호출이 실패하면 결제 행도 남지 않는다 */
+    /**
+     * 결제 행을 만들고 결제창을 여는 데 필요한 값을 돌려준다.
+     * 나이스페이는 결제창을 열 때 호출할 API가 없어서 tid는 승인 단계(returnUrl)에서 받는다.
+     */
     @Transactional
     public PaymentReadyResponse ready(Long memberId, Long productId) {
         MemberSummary member = memberQueryService.getSummary(memberId);
@@ -98,33 +105,40 @@ public class PaymentService {
                 .filter(ShopProduct::isActive)
                 .orElseThrow(() -> new NotFoundException("판매 중인 상품이 아닙니다"));
 
+        NicePayCheckout checkout = nicePayClient.checkout();   // 설정이 없으면 결제 행을 만들기 전에 실패
         Payment payment = paymentRepository.save(Payment.ready(memberId, product, UUID.randomUUID().toString()));
-
-        KakaoPayReady ready = kakaoPayClient.ready(payment.getOrderId(), memberId, product.getName(), payment.getAmount());
-        payment.attachPaymentKey(ready.tid());
 
         return new PaymentReadyResponse(
                 payment.getOrderId(),
+                product.getName(),
+                payment.getAmount(),
                 payment.getGrantedGem(),
-                ready.pcUrl(),
-                ready.mobileUrl(),
-                ready.appUrl()
+                checkout.clientId(),
+                checkout.returnUrl()
         );
     }
 
     // ===== 결제 승인 =====
 
     /**
-     * 사용자가 결제창에서 승인한 뒤 프론트가 pg_token을 넘겨 부른다.
-     * 이미 승인된 주문이면 다시 지급하지 않고 같은 결과를 돌려준다 (새로고침, 중복 클릭).
+     * 나이스페이가 returnUrl로 보낸 인증 성공 결과로 승인한다.
+     * 이미 승인된 주문이면 다시 지급하지 않고 같은 결과를 돌려준다 (새로고침, 중복 전송).
+     * 서명이나 금액이 맞지 않는 요청은 나이스페이를 부르지 않고 거절하며, 결제 상태도 바꾸지 않는다.
      */
-    public PaymentApproveResponse approve(Long memberId, String orderId, String pgToken) {
+    public PaymentApproveResponse approve(NicePayReturnRequest request) {
+        String orderId = request.orderId();
         AtomicBoolean requested = new AtomicBoolean(false);
         AtomicReference<Approved> approved = new AtomicReference<>();
         try {
             return transactionTemplate.execute(status -> {
-                Payment payment = findOwnedForUpdate(memberId, orderId);
+                Payment payment = paymentRepository.findByOrderIdForUpdate(orderId)
+                        .orElseThrow(() -> new NotFoundException("결제를 찾을 수 없습니다"));
 
+                if (!nicePayClient.verifyAuthSignature(request.authToken(), request.amount(), request.signature())
+                        || !String.valueOf(payment.getAmount()).equals(request.amount())) {
+                    log.warn("나이스페이 인증 결과 위변조 의심 orderId={} tid={}", orderId, request.tid());
+                    throw new IllegalStateException("결제 인증 정보를 확인할 수 없습니다");
+                }
                 if (payment.getStatus() == PaymentStatus.PAID) {
                     GemResult result = gemWallet.apply(purchaseCommand(payment));   // 멱등 키라 다시 지급되지 않음
                     return new PaymentApproveResponse(orderId, payment.getGrantedGem(), result.balanceAfter());
@@ -133,11 +147,12 @@ public class PaymentService {
                     throw new IllegalStateException("승인할 수 없는 결제입니다");
                 }
 
+                payment.attachPaymentKey(request.tid());
                 requested.set(true);
-                KakaoPayApproval approval = kakaoPayClient.approve(payment.getPaymentKey(), orderId, memberId, pgToken);
-                approved.set(new Approved(payment.getPaymentKey(), approval.totalAmount()));
+                NicePayApproval approval = nicePayClient.approve(request.tid(), payment.getAmount());
+                approved.set(new Approved(request.tid(), approval.amount()));
 
-                if (approval.totalAmount() != payment.getAmount()) {
+                if (approval.amount() != payment.getAmount()) {
                     throw new IllegalStateException("결제 금액이 일치하지 않습니다");
                 }
 
@@ -153,16 +168,16 @@ public class PaymentService {
         }
     }
 
-    /** 카카오페이에 승인을 요청한 뒤 실패: 돈만 빠지고 보석은 없는 상태가 남지 않게 정리한다 */
+    /** 나이스페이에 승인을 요청한 뒤 실패: 돈만 빠지고 보석은 없는 상태가 남지 않게 정리한다 */
     private void compensateFailedApproval(String orderId, Approved approved) {
         String reason = "결제 승인 실패";
         if (approved != null) {
             reason = "승인 후 처리 실패로 자동 취소";
             try {
-                kakaoPayClient.cancel(approved.tid(), approved.amount());
+                nicePayClient.cancel(approved.tid(), orderId, reason);
             } catch (RuntimeException cancelError) {
-                log.error("승인 후 처리 실패, 카카오페이 결제 취소도 실패. 수동 확인 필요 orderId={} tid={}",
-                        orderId, approved.tid(), cancelError);
+                log.error("승인 후 처리 실패, 나이스페이 결제 취소도 실패. 수동 확인 필요 orderId={} tid={} amount={}",
+                        orderId, approved.tid(), approved.amount(), cancelError);
             }
         }
 
@@ -179,7 +194,7 @@ public class PaymentService {
 
     // ===== 결제창에서 취소·실패 =====
 
-    /** 카카오페이 cancel_url, fail_url로 돌아왔을 때 프론트가 부른다. 대기 중인 결제만 실패로 바꾸고 나머지는 무시 */
+    /** 결제창을 닫거나 열지 못했을 때 프론트가 부른다. 대기 중인 결제만 실패로 바꾸고 나머지는 무시 */
     @Transactional
     public void abort(Long memberId, String orderId) {
         Payment payment = findOwnedForUpdate(memberId, orderId);
@@ -188,11 +203,19 @@ public class PaymentService {
         }
     }
 
+    /** 나이스페이가 인증 실패(authResultCode != 0000)를 returnUrl로 알려왔을 때. 대기 중인 결제만 실패로 바꾼다 */
+    @Transactional
+    public void failAuthentication(String orderId, String reason) {
+        paymentRepository.findByOrderIdForUpdate(orderId)
+                .filter(payment -> payment.getStatus() == PaymentStatus.READY)
+                .ifPresent(payment -> payment.markFailed(clock.instant(), truncate(reason)));
+    }
+
     // ===== 환불 =====
 
     /** 결제 후 환불 기간 안이고, 지급한 보석을 그대로 회수할 수 있을 때만 환불한다 */
     public PaymentRefundResponse refund(Long memberId, String orderId) {
-        AtomicBoolean canceledAtKakao = new AtomicBoolean(false);
+        AtomicBoolean canceledAtPg = new AtomicBoolean(false);
         try {
             return transactionTemplate.execute(status -> {
                 Payment payment = findOwnedForUpdate(memberId, orderId);
@@ -208,15 +231,15 @@ public class PaymentService {
                     throw new IllegalStateException("구매한 보석을 이미 사용해서 환불할 수 없습니다");
                 }
 
-                kakaoPayClient.cancel(payment.getPaymentKey(), payment.getAmount());   // 실패하면 보석 회수도 롤백
-                canceledAtKakao.set(true);
+                nicePayClient.cancel(payment.getPaymentKey(), orderId, "사용자 환불 요청");   // 실패하면 보석 회수도 롤백
+                canceledAtPg.set(true);
 
                 payment.markRefunded(now, "사용자 환불 요청");
                 return new PaymentRefundResponse(orderId, payment.getGrantedGem(), result.balanceAfter());
             });
         } catch (RuntimeException e) {
-            if (canceledAtKakao.get()) {
-                log.error("카카오페이 결제는 취소됐지만 환불 저장 실패. 수동 확인 필요 orderId={}", orderId, e);
+            if (canceledAtPg.get()) {
+                log.error("나이스페이 결제는 취소됐지만 환불 저장 실패. 수동 확인 필요 orderId={}", orderId, e);
             }
             throw e;
         }
@@ -269,7 +292,13 @@ public class PaymentService {
         return GemCommand.gemPurchase(payment.getMemberId(), payment.getId(), payment.getGrantedGem());
     }
 
-    /** 카카오페이에서 승인된 결제. 우리 쪽 처리가 실패하면 이 값으로 취소한다 */
+    /** 나이스페이 실패 메시지는 길이를 보장하지 않으므로 cancel_reason 컬럼(255자)에 맞춘다 */
+    private static String truncate(String reason) {
+        String value = reason == null || reason.isBlank() ? "결제 인증 실패" : reason;
+        return value.length() > 255 ? value.substring(0, 255) : value;
+    }
+
+    /** 나이스페이에서 승인된 결제. 우리 쪽 처리가 실패하면 이 값으로 취소한다 */
     private record Approved(String tid, int amount) {
     }
 }

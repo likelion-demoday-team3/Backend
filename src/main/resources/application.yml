@@ -66,14 +66,15 @@ app:
     store-id: ${PORTONE_STORE_ID:}
     identity-channel-key: ${PORTONE_IDENTITY_CHANNEL_KEY:}
 
-  kakaopay:
-    base-url: https://open-api.kakaopay.com
-    secret-key: ${KAKAOPAY_SECRET_KEY:}
-    cid: ${KAKAOPAY_CID:TC0ONETIME}   # TC0ONETIME = 테스트 결제 (실제 돈이 빠지지 않음)
-    # 카카오페이 결제창에서 돌아올 프론트 페이지. {orderId}는 주문 번호로 바뀐다
+  nicepay:
+    # 샌드박스(테스트 결제) 기본값. 운영 키를 쓸 때는 NICEPAY_BASE_URL=https://api.nicepay.co.kr
+    base-url: ${NICEPAY_BASE_URL:https://sandbox-api.nicepay.co.kr}
+    client-id: ${NICEPAY_CLIENT_ID:}
+    secret-key: ${NICEPAY_SECRET_KEY:}
+    # 결제창 인증 후 나이스페이가 form POST 하는 백엔드 주소. 배포 환경에서는 https://{API_DOMAIN}/payments/nicepay/return
+    return-url: ${NICEPAY_RETURN_URL:http://localhost:8080/payments/nicepay/return}
+    # 승인 처리 후 사용자를 보낼 프론트 페이지. {orderId}는 주문 번호로 바뀌고 뒤에 /success 또는 /fail이 붙는다
     # 배포 환경에서는 FRONTEND_URL만 프론트 주소로 바꾸면 된다 (예: https://kiwi.site)
-    approval-url: ${FRONTEND_URL:http://localhost:3000}/shop/payment/{orderId}/success
-    cancel-url: ${FRONTEND_URL:http://localhost:3000}/shop/payment/{orderId}/cancel
-    fail-url: ${FRONTEND_URL:http://localhost:3000}/shop/payment/{orderId}/fail
+    result-url: ${FRONTEND_URL:http://localhost:3000}/shop/payment/{orderId}
   payment:
     refund-window: 7d
