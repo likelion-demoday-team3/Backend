@@ -70,15 +70,22 @@ public class LiveRoundBroadcastService {
             memberIds.add(room.getMaleMemberId());
             memberIds.add(room.getFemaleMemberId());
         }
-        Map<Long, PartnerProfileCard> cards = profileQueryService.getCards(memberIds);
-        if (cards == null || memberIds.stream().anyMatch(id -> cards.get(id) == null)) {
+        SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
+        Map<Long, PartnerProfileCard> profileCards = profileQueryService.getCards(memberIds);
+        if (profileCards == null) {
             throw new IllegalStateException("라운드 참가자 프로필 카드가 없습니다");
         }
+        for (Long memberId : memberIds) {
+            if (profileCards.get(memberId) == null) {
+                throw new IllegalStateException("라운드 참가자 프로필 카드가 없습니다");
+            }
+        }
+        final Map<Long, PartnerProfileCard> cards = profileCards;
+        Map<Long, CompatibilitySummary> compatibilityByRoomId = new HashMap<>();
         CompatQueryService compatQueryService = compatQueryServiceProvider.getIfAvailable();
         if (compatQueryService == null) {
             throw new IllegalStateException("CompatQueryService 구현체가 필요합니다");
         }
-        Map<Long, CompatibilitySummary> compatibilityByRoomId = new HashMap<>();
         for (LiveRoom room : rooms) {
             CompatibilitySummary compatibility = compatQueryService.getCompatibility(
                     sessionId, room.getMaleMemberId(), room.getFemaleMemberId());
@@ -88,7 +95,7 @@ public class LiveRoundBroadcastService {
             compatibilityByRoomId.put(room.getId(), compatibility);
         }
 
-        Map<Long, String> aliases = aliasesOf(sessionId);
+        Map<Long, String> aliases = aliasesOf(sessionId, sessionQueryService);
         int recipientCount = 0;
         for (LiveRoom room : rooms) {
             sendAssignment(round, room, room.getMaleMemberId(), room.getFemaleMemberId(),
@@ -135,8 +142,7 @@ public class LiveRoundBroadcastService {
     }
 
     /** 세션 출석자의 memberId → 별칭. 조회할 수 없으면 빈 맵 (별칭은 화면 표시용이라 배정 자체를 막지 않는다) */
-    private Map<Long, String> aliasesOf(Long sessionId) {
-        SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
+    private Map<Long, String> aliasesOf(Long sessionId, SessionQueryService sessionQueryService) {
         if (sessionQueryService == null) {
             return Map.of();
         }

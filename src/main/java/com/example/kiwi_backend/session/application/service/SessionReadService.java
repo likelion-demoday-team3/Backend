@@ -35,9 +35,15 @@ public class SessionReadService {
     private final Clock clock;
 
     /** 아직 시작 전이고 모집 중이거나 진행 확정된 세션 */
-    public List<SessionSummaryResponse> listUpcoming() {
+    public List<SessionSummaryResponse> listUpcoming(Long memberId) {
         List<DatingSession> sessions = sessionRepository
                 .findAllByStatusInAndStartTimeAfterOrderByStartTimeAsc(VISIBLE_STATUSES, clock.instant());
+        Set<Long> mySessionIds = participantRepository.findAllByMemberIdOrderByAppliedAtDesc(memberId).stream()
+                .map(SessionParticipant::getSessionId)
+                .collect(Collectors.toSet());
+        sessions = sessions.stream()
+                .filter(session -> !session.isCallTest() || mySessionIds.contains(session.getId()))
+                .toList();
         Map<Long, SeatCount> seats = seatCounts(sessions);
         return sessions.stream()
                 .map(session -> SessionSummaryResponse.of(session, seats.get(session.getId())))
@@ -49,6 +55,9 @@ public class SessionReadService {
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
         SeatCount seats = seatCounts(List.of(session)).get(sessionId);
         SessionParticipant me = participantRepository.findBySessionIdAndMemberId(sessionId, memberId).orElse(null);
+        if (session.isCallTest() && me == null) {
+            throw new NotFoundException("세션을 찾을 수 없습니다");
+        }
         return SessionDetailResponse.of(session, seats, me);
     }
 

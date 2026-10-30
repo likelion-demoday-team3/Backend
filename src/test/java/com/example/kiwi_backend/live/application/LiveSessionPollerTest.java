@@ -45,4 +45,21 @@ class LiveSessionPollerTest {
         verify(compatibility).requestPreparation(3L);
         verifyNoInteractions(rounds);
     }
+
+    @Test
+    void waitsForLinerCompatibilityInCallTest() {
+        var query = mock(SessionQueryService.class);
+        var start = mock(LiveSessionStartService.class);
+        var rounds = mock(LiveRoundSchedulerService.class);
+        var compatibility = mock(CompatibilityPreparationService.class);
+        Instant now = Instant.parse("2026-10-13T12:01:30Z");
+        when(query.findSessionIdsDueForFirstRound(now)).thenReturn(List.of(3L));
+        when(query.isCallTestSession(3L)).thenReturn(true);
+
+        new LiveSessionPoller(query, start, rounds, compatibility, Clock.fixed(now, ZoneOffset.UTC)).poll();
+
+        verify(compatibility).isPrepared(3L);
+        verify(compatibility).requestPreparation(3L);
+        verifyNoInteractions(rounds);
+    }
 }

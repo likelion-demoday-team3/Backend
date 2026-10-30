@@ -16,6 +16,9 @@ spring:
   mail:
     host: localhost
 app:
+  session:
+    call-test:
+      enabled: true
   scheduling:
     enabled: false
   crypto:

@@ -1,8 +1,12 @@
 .git
 .gradle
 .idea
+.vscode
 build
+out
 deploy
 docs
 *.iml
 **/.env
+**/.env.*
+src/test

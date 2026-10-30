@@ -2,6 +2,7 @@ package com.example.kiwi_backend.session.application.service;
 
 import com.example.kiwi_backend.common.exception.NotFoundException;
 import com.example.kiwi_backend.contract.dto.AttendedSession;
+import com.example.kiwi_backend.contract.dto.CallTestParticipantOrder;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
@@ -65,11 +66,18 @@ public class SessionQueryServiceImpl implements SessionQueryService {
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
     }
 
+    @Override
+    public Instant getLobbyCloseAt(Long sessionId) {
+        return sessionRepository.findById(sessionId)
+                .map(DatingSession::lobbyCloseAt)
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+    }
+
     // 로비를 마감할 세션이 있는지 조회한다
     @Override
     public List<Long> findSessionIdsDueForLobbyClose(Instant now) {
-        return sessionRepository.findIdsByStatusAndStartTimeAtOrBefore(
-                SessionStatus.READY, now.minus(DatingSession.LOBBY_CLOSE_AFTER));
+        return sessionRepository.findIdsDueForLobbyClose(
+                SessionStatus.READY, now.minus(DatingSession.LOBBY_CLOSE_AFTER), now);
     }
 
     // 1라운드를 시작할 세션이 있는지 조회한다
@@ -84,6 +92,22 @@ public class SessionQueryServiceImpl implements SessionQueryService {
         return participantRepository.findAllBySessionIdAndStatus(sessionId, ParticipantStatus.ATTENDED).stream()
                 .map(p -> new LiveParticipant(p.getMemberId(), p.getGender(), p.getAlias()))
                 .toList();
+    }
+
+    @Override
+    public boolean isCallTestSession(Long sessionId) {
+        return sessionRepository.findById(sessionId).map(DatingSession::isCallTest).orElse(false);
+    }
+
+    @Override
+    public CallTestParticipantOrder getCallTestParticipantOrder(Long sessionId) {
+        DatingSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+        if (!session.isCallTest()) {
+            return null;
+        }
+        return new CallTestParticipantOrder(session.getCallTestHostMemberId(),
+                session.getCallTestFirstPartnerMemberId(), session.getCallTestSecondPartnerMemberId());
     }
 
     @Override

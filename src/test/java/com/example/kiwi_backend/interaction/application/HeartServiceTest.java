@@ -31,6 +31,20 @@ class HeartServiceTest {
     }
 
     @Test
+    void statusIncludesSenderAliasesForReceivedHearts() {
+        when(hearts.findAllBySessionIdAndReceiverId(10L, 2L))
+                .thenReturn(List.of(Heart.create(10L, 1L, 2L, 0),
+                        Heart.create(10L, 4L, 2L, 1)));
+
+        var status = service.status(10L, 2L);
+
+        assertThat(status.receivedCount()).isEqualTo(2);
+        assertThat(status.receivedFrom())
+                .containsExactly(new HeartService.HeartSender(1L, "a"),
+                        new HeartService.HeartSender(4L, "d"));
+    }
+
+    @Test
     void firstHeartIsFree() {
         assertThat(service.send(10L, 1L, 2L).chargedGem()).isZero();
         verifyNoInteractions(wallet);

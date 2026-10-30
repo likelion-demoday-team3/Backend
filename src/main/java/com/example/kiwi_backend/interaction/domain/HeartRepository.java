@@ -7,5 +7,6 @@ import java.util.Optional;
 public interface HeartRepository extends JpaRepository<Heart, Long> {
     Optional<Heart> findBySessionIdAndSenderIdAndReceiverId(Long sessionId, Long senderId, Long receiverId);
     List<Heart> findAllBySessionIdAndSenderId(Long sessionId, Long senderId);
+    List<Heart> findAllBySessionIdAndReceiverId(Long sessionId, Long receiverId);
     long countBySessionIdAndReceiverId(Long sessionId, Long receiverId);
 }
