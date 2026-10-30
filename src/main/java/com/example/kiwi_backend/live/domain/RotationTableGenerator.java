@@ -1,7 +1,6 @@
 package com.example.kiwi_backend.live.domain;
 
 import com.example.kiwi_backend.contract.dto.Gender;
-import com.example.kiwi_backend.contract.dto.CallTestParticipantOrder;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import org.springframework.stereotype.Component;
 
@@ -70,39 +69,6 @@ public class RotationTableGenerator {
         }
 
         return new RotationTable(sessionId, List.copyOf(rounds));
-    }
-
-    public RotationTable generateCallTest(Long sessionId,
-                                          List<LiveParticipant> participants,
-                                          CallTestParticipantOrder order) {
-        if (sessionId == null || participants == null || participants.size() != 3 || order == null) {
-            throw new IllegalArgumentException("통화 테스트는 참가자 세 명과 라운드 순서가 필요합니다");
-        }
-        Set<Long> participantIds = participants.stream()
-                .map(LiveParticipant::memberId)
-                .collect(java.util.stream.Collectors.toSet());
-        Set<Long> expectedIds = Set.of(order.hostMemberId(), order.firstPartnerMemberId(),
-                order.secondPartnerMemberId());
-        if (participantIds.size() != 3 || !participantIds.equals(expectedIds)) {
-            throw new IllegalArgumentException("통화 테스트 참가자 구성이 올바르지 않습니다");
-        }
-        boolean hasExpectedRoles = participants.stream().allMatch(participant -> {
-            if (participant.memberId().equals(order.hostMemberId())) {
-                return participant.gender() == Gender.MALE;
-            }
-            return participant.gender() == Gender.FEMALE;
-        });
-        if (!hasExpectedRoles) {
-            throw new IllegalArgumentException("통화 테스트 역할별 성별 구성이 올바르지 않습니다");
-        }
-
-        return new RotationTable(sessionId, List.of(
-                new RoundAssignment(1,
-                        List.of(new MatchPair(1, order.hostMemberId(), order.firstPartnerMemberId())),
-                        List.of(order.secondPartnerMemberId())),
-                new RoundAssignment(2,
-                        List.of(new MatchPair(1, order.hostMemberId(), order.secondPartnerMemberId())),
-                        List.of(order.firstPartnerMemberId()))));
     }
 
     private void validateMinimumParticipantCount(List<LiveParticipant> participants) {

@@ -62,10 +62,7 @@ public class LiveSessionStartService {
         }
         List<LiveParticipant> participants = attendance.attendees();
 
-        RotationTable rotationTable = sessionQueryService.isCallTestSession(sessionId)
-                ? rotationTableGenerator.generateCallTest(
-                        sessionId, participants, sessionQueryService.getCallTestParticipantOrder(sessionId))
-                : rotationTableGenerator.generate(sessionId, participants);
+        RotationTable rotationTable = rotationTableGenerator.generate(sessionId, participants);
         liveScheduleService.createSchedule(
                 sessionId,
                 toRoundPlans(rotationTable.rounds())

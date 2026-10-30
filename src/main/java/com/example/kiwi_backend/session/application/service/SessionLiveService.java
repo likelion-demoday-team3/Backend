@@ -81,10 +81,7 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
         int female = attended.size() - male;
 
         // 접속자 0명도 이 규칙을 그대로 따른다: 진행 조건 미달 → 세션 취소, 전원 노쇼라 환불 없음
-        boolean canProceed = session.isCallTest()
-                ? isCompleteCallTestAttendance(session, attended, male, female)
-                : ProceedPolicy.canProceed(male, female);
-        if (canProceed) {
+        if (ProceedPolicy.canProceed(male, female)) {
             session.startProgress();
             log.info("로비 마감, 진행 sessionId={} male={} female={} firstRoundAt={}",
                     sessionId, male, female, session.getPhaseEndsAt());
@@ -135,17 +132,5 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
             gemWallet.apply(GemCommand.entryFeeRefund(
                     participant.getMemberId(), session.getId(), fee, participant.getAppliedAt()));
         }
-    }
-
-    private boolean isCompleteCallTestAttendance(DatingSession session,
-                                                 List<SessionParticipant> attended,
-                                                 int male,
-                                                 int female) {
-        Set<Long> attendedIds = attended.stream()
-                .map(SessionParticipant::getMemberId)
-                .collect(java.util.stream.Collectors.toSet());
-        Set<Long> expectedIds = Set.of(session.getCallTestHostMemberId(),
-                session.getCallTestFirstPartnerMemberId(), session.getCallTestSecondPartnerMemberId());
-        return attended.size() == 3 && male == 1 && female == 2 && attendedIds.equals(expectedIds);
     }
 }

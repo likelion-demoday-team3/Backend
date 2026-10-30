@@ -1,7 +1,6 @@
 package com.example.kiwi_backend.live.domain;
 
 import com.example.kiwi_backend.contract.dto.Gender;
-import com.example.kiwi_backend.contract.dto.CallTestParticipantOrder;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import org.junit.jupiter.api.Test;
 
@@ -136,49 +135,5 @@ class RotationTableGeneratorTest {
         assertThatThrownBy(() -> generator.generate(1L, participants))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("duplicate participants are not allowed");
-    }
-
-    @Test
-    void generateCallTestUsesTheRequestedPartnerOrderForThreePeople() {
-        var order = new CallTestParticipantOrder(7L, 12L, 15L);
-        List<LiveParticipant> participants = List.of(
-                new LiveParticipant(7L, Gender.MALE, "host"),
-                new LiveParticipant(12L, Gender.FEMALE, "first"),
-                new LiveParticipant(15L, Gender.FEMALE, "second")
-        );
-
-        RotationTable table = generator.generateCallTest(9L, participants, order);
-
-        assertThat(table.rounds()).hasSize(2);
-        assertThat(table.rounds().get(0).pairs())
-                .containsExactly(new MatchPair(1, 7L, 12L));
-        assertThat(table.rounds().get(0).idleMemberIds()).containsExactly(15L);
-        assertThat(table.rounds().get(1).pairs())
-                .containsExactly(new MatchPair(1, 7L, 15L));
-        assertThat(table.rounds().get(1).idleMemberIds()).containsExactly(12L);
-    }
-
-    @Test
-    void generateCallTestRejectsParticipantsOutsideRequestedRoster() {
-        var order = new CallTestParticipantOrder(7L, 12L, 15L);
-
-        assertThatThrownBy(() -> generator.generateCallTest(9L, List.of(
-                new LiveParticipant(7L, Gender.MALE, "host"),
-                new LiveParticipant(12L, Gender.FEMALE, "first"),
-                new LiveParticipant(20L, Gender.FEMALE, "stranger")
-        ), order)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("통화 테스트 참가자 구성이 올바르지 않습니다");
-    }
-
-    @Test
-    void generateCallTestRejectsUnexpectedGenderRoles() {
-        var order = new CallTestParticipantOrder(7L, 12L, 15L);
-
-        assertThatThrownBy(() -> generator.generateCallTest(9L, List.of(
-                new LiveParticipant(7L, Gender.FEMALE, "host"),
-                new LiveParticipant(12L, Gender.FEMALE, "first"),
-                new LiveParticipant(15L, Gender.FEMALE, "second")
-        ), order)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("통화 테스트 역할별 성별 구성이 올바르지 않습니다");
     }
 }

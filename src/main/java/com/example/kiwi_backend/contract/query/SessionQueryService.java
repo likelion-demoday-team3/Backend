@@ -1,7 +1,6 @@
 package com.example.kiwi_backend.contract.query;
 
 import com.example.kiwi_backend.contract.dto.AttendedSession;
-import com.example.kiwi_backend.contract.dto.CallTestParticipantOrder;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 
 import java.time.Instant;
@@ -39,12 +38,6 @@ public interface SessionQueryService {
      * finalizeAttendance 결과에 같은 목록이 들어 있으므로, 로비 마감 직후에는 이걸 따로 부르지 않아도 된다.
      */
     List<LiveParticipant> getLiveParticipants(Long sessionId);
-
-    /** 테스트 세션 여부. 테스트 세션은 Liner 궁합 호출을 생략한다. */
-    boolean isCallTestSession(Long sessionId);
-
-    /** 테스트 라운드 순서. 일반 세션이면 null */
-    CallTestParticipantOrder getCallTestParticipantOrder(Long sessionId);
 
     /** 이 회원이 출석했고 투표까지 끝난(COMPLETED) 세션들. 시작 시각 최신순 */
     List<AttendedSession> findCompletedAttendances(Long memberId);

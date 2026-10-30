@@ -41,9 +41,6 @@ management:
       enabled: false
 
 app:
-  session:
-    call-test:
-      enabled: ${APP_SESSION_CALL_TEST_ENABLED:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   mail:

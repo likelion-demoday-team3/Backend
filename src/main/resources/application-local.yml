@@ -8,8 +8,5 @@ spring:
     password: kiwi
 
 app:
-  session:
-    call-test:
-      enabled: true
   cors:
     allowed-origins: http://localhost:3000

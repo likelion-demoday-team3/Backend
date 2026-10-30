@@ -2,7 +2,6 @@ package com.example.kiwi_backend.session.application.service;
 
 import com.example.kiwi_backend.common.exception.NotFoundException;
 import com.example.kiwi_backend.contract.dto.AttendedSession;
-import com.example.kiwi_backend.contract.dto.CallTestParticipantOrder;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
 import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
@@ -85,22 +84,6 @@ public class SessionQueryServiceImpl implements SessionQueryService {
         return participantRepository.findAllBySessionIdAndStatus(sessionId, ParticipantStatus.ATTENDED).stream()
                 .map(p -> new LiveParticipant(p.getMemberId(), p.getGender(), p.getAlias()))
                 .toList();
-    }
-
-    @Override
-    public boolean isCallTestSession(Long sessionId) {
-        return sessionRepository.findById(sessionId).map(DatingSession::isCallTest).orElse(false);
-    }
-
-    @Override
-    public CallTestParticipantOrder getCallTestParticipantOrder(Long sessionId) {
-        DatingSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
-        if (!session.isCallTest()) {
-            return null;
-        }
-        return new CallTestParticipantOrder(session.getCallTestHostMemberId(),
-                session.getCallTestFirstPartnerMemberId(), session.getCallTestSecondPartnerMemberId());
     }
 
     @Override
