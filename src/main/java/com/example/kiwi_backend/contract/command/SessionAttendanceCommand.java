@@ -5,7 +5,7 @@ import com.example.kiwi_backend.contract.dto.AttendanceResult;
 import java.util.Set;
 
 /**
- * 로비 마감 시 출석 확정. session이 구현하고 live(A)가 20:01에 호출한다.
+ * 로비 마감 시 출석 확정. session이 구현하고 live(A)가 20:00(시작 시각)에 호출한다.
  *
  * [제안 4] A가 만든 원래 버전은 반환값이 void였다. 진행 판단 결과를 A가 받을 수 없어서
  *   출석 미달이어도 배정표를 만들고 라운드를 시작하는 문제가 있어 AttendanceResult를 반환하도록 바꿨다.

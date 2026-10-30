@@ -3,8 +3,9 @@
 ## Flow
 
 - Poll every 5 seconds, independent of WebSocket join.
-- At start time + 60 seconds: freeze lobby attendance, cancel/refund or persist the rotation.
-- At start time + 90 seconds: start the first round.
+- At start time: freeze lobby attendance, cancel/refund or persist the rotation.
+- At start time + 15 seconds: start the first round.
+- Regular sessions and admin call-test sessions use the same timing (DatingSession.LOBBY_CLOSE_AFTER, FIRST_ROUND_AFTER).
 - Session state and first round state change in one transaction under the session lock.
 - Send lobby notices and round assignments only after commit.
 - Failed lobby/database work remains eligible for the next poll.

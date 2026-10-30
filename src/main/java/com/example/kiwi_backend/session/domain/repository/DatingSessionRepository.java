@@ -33,7 +33,10 @@ public interface DatingSessionRepository extends JpaRepository<DatingSession, Lo
     List<Long> findIdsByStatusAndStartTimeAtOrBefore(@Param("status") SessionStatus status,
                                                      @Param("threshold") Instant threshold);
 
-    /** 테스트 세션과 일반 세션의 서로 다른 로비 마감 시각을 적용한다. */
+    /**
+     * 로비를 마감할 차례인 세션. 지금은 일반 세션과 통화 테스트 모두 시작 시각에 마감하므로
+     * 두 threshold가 같지만, 다시 달라질 수 있어 조건은 나눠 둔다.
+     */
     @Query("""
         select s.id from DatingSession s
         where s.status = :status

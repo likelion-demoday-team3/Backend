@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 class SessionLiveCallTestTest {
 
     @Test
-    void callTestClosesLobbyAtStartAndBeginsFirstRoundFifteenSecondsLater() {
+    void regularAndCallTestSessionsBothCloseLobbyAtStartAndBeginFirstRoundFifteenSecondsLater() {
         Instant createdAt = Instant.parse("2026-10-29T10:00:00Z");
         Instant startTime = createdAt.plusSeconds(180);
         DatingSession test = DatingSession.createCallTest(startTime, 1L, 2L, 3L, createdAt);
@@ -34,8 +34,8 @@ class SessionLiveCallTestTest {
         assertThat(test.lobbyCloseAt()).isEqualTo(startTime);
         assertThat(test.firstRoundAt()).isEqualTo(startTime.plusSeconds(15));
         assertThat(test.getPhaseEndsAt()).isEqualTo(test.firstRoundAt());
-        assertThat(regular.lobbyCloseAt()).isEqualTo(startTime.plusSeconds(60));
-        assertThat(regular.firstRoundAt()).isEqualTo(startTime.plusSeconds(90));
+        assertThat(regular.lobbyCloseAt()).isEqualTo(startTime);
+        assertThat(regular.firstRoundAt()).isEqualTo(startTime.plusSeconds(15));
     }
 
     @Test

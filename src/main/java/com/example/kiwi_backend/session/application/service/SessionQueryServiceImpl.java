@@ -34,7 +34,7 @@ public class SessionQueryServiceImpl implements SessionQueryService {
     /**
      * 라이브 입장 가능 여부. 세션 상태 · 로비 시간 · 참가자 상태를 함께 본다.
      *
-     * 참고: 로비 마감(시작 + 1분) 직후 ~ 스케줄러가 출석을 확정하기 전(최대 5초) 사이에는
+     * 참고: 로비 마감(시작 시각) 직후 ~ 스케줄러가 출석을 확정하기 전(최대 5초) 사이에는
      * 세션이 아직 READY인데 로비 시간이 지나서 false가 된다. 이 몇 초 동안 끊겼다 다시 들어오는 사람은
      * 거부되고 노쇼로 잡힐 수 있다. 드문 경우라 지금은 그대로 둔다.
      */
@@ -51,7 +51,7 @@ public class SessionQueryServiceImpl implements SessionQueryService {
         }
         Instant now = clock.instant();
         return switch (session.getStatus()) {
-            // 세션이 READY(참가 마감 19:30 ~ 로비 마감 20:01 사이)인 경우 참가자가 APPLIED이고 로비가 open일 경우 TRUE
+            // 세션이 READY(참가 마감 19:30 ~ 로비 마감 20:00 사이)인 경우 참가자가 APPLIED이고 로비가 open일 경우 TRUE
             case READY -> participant.getStatus() == ParticipantStatus.APPLIED && session.isLobbyOpen(now);
             // 세션이 IN_PROGRESS(로비 끝, 세션 시작)인 경우 참가자가 ATTENDED일 경우 TRUE
             case IN_PROGRESS -> participant.getStatus() == ParticipantStatus.ATTENDED;
