@@ -81,6 +81,15 @@ public class Profile extends BaseTimeEntity {
     }
 
     /**
+     * 세션 신청에 필요한 만큼 카드를 채웠는가: 문장 항목 4개를 모두 쓰고 관심사를 하나 이상 넣었다.
+     * 빈 문장은 update에서 null로 저장되므로 null만 확인하면 된다.
+     */
+    public boolean isComplete() {
+        return idealType != null && datingStyle != null && contactStyle != null && loveStyle != null
+                && !interests.isEmpty();
+    }
+
+    /**
      * 관심사를 요청한 목록으로 맞춘다.
      * 전부 지우고 새로 넣으면 Hibernate가 insert를 delete보다 먼저 실행해서
      * (profile_id, interest) 유니크에 걸린다. 그래서 바뀐 것만 지우고 더한다.

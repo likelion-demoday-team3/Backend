@@ -49,6 +49,10 @@ public class SessionApplicationService {
         if (!member.active()) {
             throw new IllegalStateException("이용할 수 없는 계정입니다");
         }
+        // 세션에서 상대에게 보여줄 카드가 비어 있으면 안 되므로 신청 전에 막는다
+        if (!memberQueryService.hasCompletedProfile(memberId)) {
+            throw new IllegalStateException("세션 신청 전에 프로필 카드를 작성해주세요 (문장 4개와 관심사 1개 이상)");
+        }
 
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
