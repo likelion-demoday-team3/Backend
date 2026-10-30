@@ -37,7 +37,8 @@ public class HeartService {
         }
         hearts.saveAndFlush(Heart.create(sessionId, senderId, receiverId, price));
         events.publishEvent(new UserMessageEvent(receiverId, "/queue/live/heart-received",
-                new Received(sessionId, hearts.countBySessionIdAndReceiverId(sessionId, receiverId))));
+                new Received(sessionId, senderId, context.requireParticipant(senderId).alias(),
+                        hearts.countBySessionIdAndReceiverId(sessionId, receiverId))));
         return new Receipt(receiverId, price, false);
     }
 
@@ -46,12 +47,18 @@ public class HeartService {
         var context = access.lock(sessionId);
         context.requireParticipant(memberId);
         var sent = hearts.findAllBySessionIdAndSenderId(sessionId, memberId);
+        var receivedFrom = hearts.findAllBySessionIdAndReceiverId(sessionId, memberId).stream()
+                .map(heart -> new HeartSender(heart.getSenderId(),
+                        context.requireParticipant(heart.getSenderId()).alias()))
+                .toList();
         return new HeartStatus(sent.stream().map(Heart::getReceiverId).toList(),
-                hearts.countBySessionIdAndReceiverId(sessionId, memberId), sent.isEmpty(),
+                receivedFrom.size(), receivedFrom, sent.isEmpty(),
                 context.phase() == LiveSessionContext.Phase.HEART ? context.deadline() : null);
     }
 
     public record Receipt(Long receiverId, int chargedGem, boolean alreadySent) { }
-    public record Received(Long sessionId, long receivedCount) { }
-    public record HeartStatus(List<Long> sentTo, long receivedCount, boolean freeHeartRemaining, Instant heartsEndsAt) { }
+    public record Received(Long sessionId, Long senderId, String senderAlias, long receivedCount) { }
+    public record HeartSender(Long senderId, String senderAlias) { }
+    public record HeartStatus(List<Long> sentTo, long receivedCount, List<HeartSender> receivedFrom,
+                              boolean freeHeartRemaining, Instant heartsEndsAt) { }
 }
