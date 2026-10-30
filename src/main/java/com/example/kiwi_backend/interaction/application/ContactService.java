@@ -1,5 +1,6 @@
 package com.example.kiwi_backend.interaction.application;
 
+import com.example.kiwi_backend.common.exception.ContactUnavailableException;
 import com.example.kiwi_backend.common.realtime.UserMessageEvent;
 import com.example.kiwi_backend.contract.command.*;
 import com.example.kiwi_backend.contract.dto.*;
@@ -47,7 +48,7 @@ public class ContactService {
         windows.requireContactOpen(sessionId, requester);
         if (shares.findBySessionIdAndSenderIdAndReceiverId(sessionId, target, requester).isPresent())
             throw new IllegalStateException("Contact already available");
-        requireContact(target, type);
+        requireTargetContact(target, type);
         var request = requests.saveAndFlush(ContactRequest.create(sessionId, requester, target, type, clock.instant()));
         events.publishEvent(new UserMessageEvent(target, "/queue/live/contact-requested", requestView(request)));
         return requestView(request);
@@ -104,6 +105,12 @@ public class ContactService {
     private void requireContact(Long memberId, ContactType type) {
         if (type == null || !contacts.contacts(memberId).containsKey(type))
             throw new IllegalArgumentException("Requested contact is unavailable");
+    }
+
+    /** 요청할 상대가 그 종류를 등록하지 않았으면 CONTACT_UNAVAILABLE로 알려 프론트가 다른 종류를 제안하게 한다 */
+    private void requireTargetContact(Long target, ContactType type) {
+        if (type == null) throw new IllegalArgumentException("Requested contact is unavailable");
+        if (!contacts.contacts(target).containsKey(type)) throw new ContactUnavailableException(type);
     }
 
     private void debit(Long memberId, Long sessionId, GemTransactionType type, String key) {

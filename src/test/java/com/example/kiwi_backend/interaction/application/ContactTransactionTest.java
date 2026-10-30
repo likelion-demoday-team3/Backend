@@ -1,5 +1,6 @@
 package com.example.kiwi_backend.interaction.application;
 
+import com.example.kiwi_backend.common.exception.ContactUnavailableException;
 import com.example.kiwi_backend.contract.dto.*;
 import com.example.kiwi_backend.contract.query.MemberContactQuery;
 import com.example.kiwi_backend.interaction.domain.*;
@@ -115,6 +116,24 @@ class ContactTransactionTest {
         assertThat(shares.findBySessionIdAndSenderIdAndReceiverId(sessionId, target, sender)).isPresent();
         assertThat(wallet.getBalance(sender).gemBalance()).isZero();
         assertThat(service.shareHistory(target, 0, 20).items()).hasSize(2);
+    }
+
+    @Test
+    void requestingUnregisteredContactTypeTellsWhichTypeIsMissingAndSavesNothing() {
+        windows.closeResults(sessionId, sender);
+        // 상대는 전화번호만 등록했다 (인스타그램 없음)
+        when(contactQuery.contacts(target)).thenReturn(Map.of(ContactType.PHONE, "01000000000"));
+
+        assertThatThrownBy(() -> service.request(sessionId, sender, target, ContactType.INSTAGRAM))
+                .isInstanceOf(ContactUnavailableException.class)
+                .hasMessage("상대방의 인스타그램 아이디가 등록되어 있지 않아요")
+                .extracting(e -> ((ContactUnavailableException) e).getRequested())
+                .isEqualTo(ContactType.INSTAGRAM);
+        assertThat(requests.findBySessionIdAndRequesterIdAndTargetId(sessionId, sender, target)).isEmpty();
+
+        // 프론트가 "대신 전화번호를 요청할까요?"에서 예를 누르면 그대로 요청된다
+        assertThat(service.request(sessionId, sender, target, ContactType.PHONE).status())
+                .isEqualTo(ContactRequest.Status.PENDING);
     }
 
     @Test

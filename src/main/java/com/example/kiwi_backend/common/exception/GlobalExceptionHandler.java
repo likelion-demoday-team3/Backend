@@ -32,6 +32,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.fail("INVALID_INPUT", e.getMessage()));
     }
 
+    /** 상대가 등록하지 않은 연락처 종류를 요청함. 프론트는 code만 보고 다른 종류로 다시 요청할지 묻는다 */
+    @ExceptionHandler(ContactUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleContactUnavailable(ContactUnavailableException e) {
+        return ResponseEntity.badRequest().body(ApiResponse.fail("CONTACT_UNAVAILABLE", e.getMessage()));
+    }
+
     /** 현재 상태에서 할 수 없는 행동 (탈퇴 회원, 중복 가입 등) */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException e) {
