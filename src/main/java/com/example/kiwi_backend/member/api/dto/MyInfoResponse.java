@@ -3,6 +3,7 @@ package com.example.kiwi_backend.member.api.dto;
 import com.example.kiwi_backend.member.domain.entity.Member;
 import com.example.kiwi_backend.contract.dto.Gender;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -18,7 +19,9 @@ public record MyInfoResponse(
         Gender gender,
         LocalDate birthDate,
         String phoneNumber,
-        String instagramId
+        String instagramId,
+        // 본인인증 시각. 인증하지 않았으면 null (마이페이지 "본인인증 완료/필요" 표시용)
+        Instant identityVerifiedAt
 ) {
     public static MyInfoResponse from(Member member) {
         return new MyInfoResponse(
@@ -29,7 +32,8 @@ public record MyInfoResponse(
                 member.getGender(),
                 member.getBirthDate(),
                 member.getPhoneNumber(),
-                member.getInstagramId()
+                member.getInstagramId(),
+                member.getIdentityVerifiedAt()
         );
     }
 }

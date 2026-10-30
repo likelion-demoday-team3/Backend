@@ -1,12 +1,15 @@
 package com.example.kiwi_backend.wallet.api.dto;
 
 import com.example.kiwi_backend.contract.dto.GemTransactionType;
+import com.example.kiwi_backend.contract.dto.PaymentSummary;
 import com.example.kiwi_backend.wallet.domain.entity.WalletHistory;
 
 import java.time.Instant;
 
 /**
  * 사용자에게 보여주는 보석 내역. 운영자 메모(memo)와 멱등 키는 내보내지 않는다.
+ * 보석 구매·구매 환불이면 orderId와 paymentAmount(원)를 함께 내려서, 프론트가 결제 상세와 정확히 연결하게 한다.
+ * 결제와 관계없는 내역이면 둘 다 null.
  */
 public record WalletHistoryResponse(
         GemTransactionType type,
@@ -14,17 +17,21 @@ public record WalletHistoryResponse(
         int amount,
         int balanceAfter,
         Long sessionId,
-        Instant createdAt
+        Instant createdAt,
+        String orderId,
+        Integer paymentAmount
 ) {
 
-    public static WalletHistoryResponse from(WalletHistory history) {
+    public static WalletHistoryResponse from(WalletHistory history, PaymentSummary payment) {
         return new WalletHistoryResponse(
                 history.getType(),
                 describe(history.getType()),
                 history.getAmount(),
                 history.getBalanceAfter(),
                 history.getSessionId(),
-                history.getCreatedAt()
+                history.getCreatedAt(),
+                payment == null ? null : payment.orderId(),
+                payment == null ? null : payment.amount()
         );
     }
 

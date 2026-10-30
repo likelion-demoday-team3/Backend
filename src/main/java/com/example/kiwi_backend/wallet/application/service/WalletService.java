@@ -4,6 +4,8 @@ import com.example.kiwi_backend.common.exception.NotFoundException;
 import com.example.kiwi_backend.contract.command.GemWallet;
 import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.GemResult;
+import com.example.kiwi_backend.contract.dto.PaymentSummary;
+import com.example.kiwi_backend.contract.query.PaymentQueryService;
 import com.example.kiwi_backend.wallet.api.dto.WalletBalanceResponse;
 import com.example.kiwi_backend.wallet.api.dto.WalletHistoryResponse;
 import com.example.kiwi_backend.wallet.domain.entity.Wallet;
@@ -16,7 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 보석 잔액과 내역의 유일한 관리자.
@@ -36,6 +41,7 @@ public class WalletService implements GemWallet {
 
     private final WalletRepository walletRepository;
     private final WalletHistoryRepository historyRepository;
+    private final PaymentQueryService paymentQueryService;
 
     // ===== 다른 모듈이 부르는 보석 변동 =====
 
@@ -94,9 +100,17 @@ public class WalletService implements GemWallet {
     public List<WalletHistoryResponse> getHistory(Long memberId, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_HISTORY_PAGE_SIZE);
-        return historyRepository
+        List<WalletHistory> histories = historyRepository
                 .findByMemberIdOrderByCreatedAtDescIdDesc(memberId, PageRequest.of(safePage, safeSize))
-                .map(WalletHistoryResponse::from)
                 .getContent();
+        // 구매·구매 환불 내역에 주문 번호와 결제 금액을 붙인다 (한 번에 조회)
+        Map<Long, PaymentSummary> payments = paymentQueryService.summaries(histories.stream()
+                .map(WalletHistory::getPaymentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return histories.stream()
+                .map(history -> WalletHistoryResponse.from(history,
+                        history.getPaymentId() == null ? null : payments.get(history.getPaymentId())))
+                .toList();
     }
 }
