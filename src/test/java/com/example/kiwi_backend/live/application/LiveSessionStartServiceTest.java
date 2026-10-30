@@ -34,7 +34,7 @@ class LiveSessionStartServiceTest {
     void setup() {
         when(queries.getIfAvailable()).thenReturn(query);
         when(commands.getIfAvailable()).thenReturn(command);
-        when(query.getStartTime(10L)).thenReturn(now.minusSeconds(60));
+        when(query.getLobbyCloseAt(10L)).thenReturn(now);
         when(presence.closeLobby(10L)).thenReturn(Set.of(1L, 2L, 3L, 4L, 5L));
     }
 
@@ -86,7 +86,7 @@ class LiveSessionStartServiceTest {
 
     @Test
     void earlyRequestDoesNotFreezePresence() {
-        when(query.getStartTime(10L)).thenReturn(now);
+        when(query.getLobbyCloseAt(10L)).thenReturn(now.plusSeconds(1));
         assertThatThrownBy(() -> service.startLiveSession(10L)).isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(presence, command, schedules, notices);
     }

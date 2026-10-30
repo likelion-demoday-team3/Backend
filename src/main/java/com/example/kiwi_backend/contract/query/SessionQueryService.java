@@ -18,7 +18,7 @@ public interface SessionQueryService {
 
     /**
      * 이 회원이 "지금" 라이브에 들어올 수 있는지.
-     *   - 세션 READY: 신청 상태(APPLIED)이고 로비 시간(시작 5분 전 ~ 시작 1분 후) 안
+     *   - 세션 READY: 신청 상태(APPLIED)이고 로비 시간 안 (일반: 시작 5분 전 ~ 시작 1분 후, 통화 테스트: 시작 시각까지)
      *   - 세션 IN_PROGRESS: 출석(ATTENDED) (라운드 중 재접속)
      *   - 그 외(취소된 세션, 본인 취소, 노쇼 등): false
      * 메서드 이름은 A의 코드가 이미 쓰고 있어서 그대로 두었다. 의미는 "라이브 입장 가능 여부"로 넓어졌다.
@@ -28,7 +28,10 @@ public interface SessionQueryService {
     /** 세션 시작 시각. 없는 세션이면 NotFoundException */
     Instant getStartTime(Long sessionId);
 
-    /** 로비를 마감할 차례인 세션: READY이고 시작 + 1분이 지남. A의 5초 주기 조회 ①에서 사용 */
+    /** 이 세션의 로비 마감 시각. 통화 테스트는 시작 시각, 일반 세션은 시작 1분 후. */
+    Instant getLobbyCloseAt(Long sessionId);
+
+    /** 로비를 마감할 차례인 세션: READY이고 해당 세션의 로비 마감 시각이 지남. A의 5초 주기 조회 ①에서 사용 */
     List<Long> findSessionIdsDueForLobbyClose(Instant now);
 
     /** 1라운드를 시작할 차례인 세션: IN_PROGRESS이고 아직 라운드 시작 전이며 1라운드 시각이 지남. 조회 ②에서 사용 */

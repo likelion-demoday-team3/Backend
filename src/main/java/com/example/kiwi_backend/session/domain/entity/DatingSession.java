@@ -33,6 +33,9 @@ public class DatingSession extends BaseTimeEntity {
     /** 1라운드 시작 = 시작 1분 30초 후 (로비 마감 후 30초 준비 시간) */
     public static final Duration FIRST_ROUND_AFTER = Duration.ofSeconds(90);
 
+    /** 통화 테스트는 시작 시각에 출석을 확정하고 15초 뒤 통화를 시작한다. */
+    public static final Duration CALL_TEST_FIRST_ROUND_AFTER = Duration.ofSeconds(15);
+
     static final int MIN_CAPACITY = 3;
     static final int MAX_CAPACITY = 6;
 
@@ -135,8 +138,8 @@ public class DatingSession extends BaseTimeEntity {
         session.status = SessionStatus.READY;
         session.liveStatus = LiveStatus.WAITING;
         session.currentRoundNumber = 0;
-        session.phaseEndsAt = session.firstRoundAt();
         session.callTest = true;
+        session.phaseEndsAt = session.firstRoundAt();
         session.callTestHostMemberId = hostMemberId;
         session.callTestFirstPartnerMemberId = firstPartnerMemberId;
         session.callTestSecondPartnerMemberId = secondPartnerMemberId;
@@ -278,11 +281,11 @@ public class DatingSession extends BaseTimeEntity {
     }
 
     public Instant lobbyCloseAt() {
-        return startTime.plus(LOBBY_CLOSE_AFTER);
+        return callTest ? startTime : startTime.plus(LOBBY_CLOSE_AFTER);
     }
 
     public Instant firstRoundAt() {
-        return startTime.plus(FIRST_ROUND_AFTER);
+        return startTime.plus(callTest ? CALL_TEST_FIRST_ROUND_AFTER : FIRST_ROUND_AFTER);
     }
 
     public boolean isCallTest() {

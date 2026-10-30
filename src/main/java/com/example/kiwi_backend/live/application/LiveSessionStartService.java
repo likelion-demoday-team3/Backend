@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -39,11 +38,11 @@ public class LiveSessionStartService {
             throw new IllegalStateException("SessionQueryService 구현체가 필요합니다");
         }
 
-        Instant startTime = sessionQueryService.getStartTime(sessionId);
-        if (startTime == null) {
-            throw new IllegalStateException("세션 시작 시각을 찾을 수 없습니다");
+        Instant lobbyCloseAt = sessionQueryService.getLobbyCloseAt(sessionId);
+        if (lobbyCloseAt == null) {
+            throw new IllegalStateException("로비 마감 시각을 찾을 수 없습니다");
         }
-        if (clock.instant().isBefore(startTime.plus(Duration.ofMinutes(1)))) {
+        if (clock.instant().isBefore(lobbyCloseAt)) {
             throw new IllegalStateException("로비 마감 시각 전에는 세션을 시작할 수 없습니다");
         }
 

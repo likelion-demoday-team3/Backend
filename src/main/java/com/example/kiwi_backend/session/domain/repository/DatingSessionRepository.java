@@ -27,11 +27,22 @@ public interface DatingSessionRepository extends JpaRepository<DatingSession, Lo
     /**
      * 상태가 status이고 시작 시각이 threshold 이전인 세션.
      *   30분 전 판단: (RECRUITING, now + 30분)
-     *   로비 마감:    (READY, now - 1분)
+     *   로비 마감은 findIdsDueForLobbyClose에서 별도로 조회한다.
      */
     @Query("select s.id from DatingSession s where s.status = :status and s.startTime <= :threshold")
     List<Long> findIdsByStatusAndStartTimeAtOrBefore(@Param("status") SessionStatus status,
                                                      @Param("threshold") Instant threshold);
+
+    /** 테스트 세션과 일반 세션의 서로 다른 로비 마감 시각을 적용한다. */
+    @Query("""
+        select s.id from DatingSession s
+        where s.status = :status
+          and (s.startTime <= :regularThreshold
+               or (s.callTest = true and s.startTime <= :testThreshold))
+        """)
+    List<Long> findIdsDueForLobbyClose(@Param("status") SessionStatus status,
+                                       @Param("regularThreshold") Instant regularThreshold,
+                                       @Param("testThreshold") Instant testThreshold);
 
     /** 1라운드를 시작할 차례인 세션: 진행 중이고, 아직 라운드 시작 전(WAITING)이고, 1라운드 시각이 지남 */
     @Query("""

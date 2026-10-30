@@ -83,6 +83,8 @@ class AdminCallTestSessionServiceTest {
         assertThat(session.lobbyOpenAt()).isBeforeOrEqualTo(Instant.now());
         assertThat(session.lobbyCloseAt()).isAfter(Instant.now());
         assertThat(response.firstRoundAt()).isEqualTo(session.firstRoundAt());
+        assertThat(session.lobbyCloseAt()).isEqualTo(session.getStartTime());
+        assertThat(session.firstRoundAt()).isEqualTo(session.getStartTime().plusSeconds(15));
         assertThat(participants).hasSize(3);
         assertThat(participants).extracting(p -> p.getGender())
                 .containsExactly(Gender.MALE, Gender.FEMALE, Gender.FEMALE);

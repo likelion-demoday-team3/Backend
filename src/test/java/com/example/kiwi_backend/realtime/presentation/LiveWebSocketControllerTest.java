@@ -58,6 +58,7 @@ class LiveWebSocketControllerTest {
         when(liveJoinService.join(10L, 101L)).thenReturn(response);
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
         when(sessionQueryService.getStartTime(10L)).thenReturn(Instant.parse("2026-10-09T12:00:00Z"));
+        when(sessionQueryService.getLobbyCloseAt(10L)).thenReturn(Instant.parse("2026-10-09T12:01:00Z"));
 
         controller.join(request, authUser, "ws-1");
 

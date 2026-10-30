@@ -66,11 +66,18 @@ public class SessionQueryServiceImpl implements SessionQueryService {
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
     }
 
+    @Override
+    public Instant getLobbyCloseAt(Long sessionId) {
+        return sessionRepository.findById(sessionId)
+                .map(DatingSession::lobbyCloseAt)
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+    }
+
     // 로비를 마감할 세션이 있는지 조회한다
     @Override
     public List<Long> findSessionIdsDueForLobbyClose(Instant now) {
-        return sessionRepository.findIdsByStatusAndStartTimeAtOrBefore(
-                SessionStatus.READY, now.minus(DatingSession.LOBBY_CLOSE_AFTER));
+        return sessionRepository.findIdsDueForLobbyClose(
+                SessionStatus.READY, now.minus(DatingSession.LOBBY_CLOSE_AFTER), now);
     }
 
     // 1라운드를 시작할 세션이 있는지 조회한다
