@@ -1,6 +1,8 @@
 package com.example.kiwi_backend.vote.application;
 
+import com.example.kiwi_backend.common.notification.NotificationType;
 import com.example.kiwi_backend.contract.dto.*;
+import com.example.kiwi_backend.notification.application.NotificationService;
 import com.example.kiwi_backend.session.domain.entity.*;
 import com.example.kiwi_backend.session.domain.repository.*;
 import com.example.kiwi_backend.vote.domain.*;
@@ -26,6 +28,7 @@ class VoteTransactionTest {
     @Autowired DatingSessionRepository sessions;
     @Autowired SessionParticipantRepository participants;
     @Autowired WalletService wallet;
+    @Autowired NotificationService notifications;
     @MockitoBean Clock clock;
     private final Instant start = Instant.parse("2030-01-01T12:00:00Z");
     private final AtomicReference<Instant> now = new AtomicReference<>(start);
@@ -54,6 +57,13 @@ class VoteTransactionTest {
         service.submit(sessionId, sender, List.of());
         assertThat(service.ownVote(sessionId, sender).submitted()).isTrue();
         assertThat(wallet.getBalance(sender).gemBalance()).isEqualTo(before + 2);
+        // 두 번 제출해도 보증금 알림은 한 번
+        assertThat(notifications.list(sender, 0, 50).items()).filteredOn(item -> sessionId.equals(item.sessionId()))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.type()).isEqualTo(NotificationType.COMPLETION_REFUND);
+                    assertThat(item.body()).isEqualTo("투표를 완료해 보석 ◆2개를 돌려드렸어요.");
+                    assertThat(item.link()).isNull();
+                });
         assertThat(participants.findBySessionIdAndMemberId(sessionId, sender).orElseThrow().getVotedAt()).isEqualTo(start);
         assertThatThrownBy(() -> service.submit(sessionId, sender, List.of(receiver))).isInstanceOf(IllegalStateException.class);
     }

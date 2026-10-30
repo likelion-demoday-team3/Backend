@@ -1,5 +1,7 @@
 package com.example.kiwi_backend.vote.application;
 
+import com.example.kiwi_backend.common.notification.NotificationEvent;
+import com.example.kiwi_backend.common.notification.NotificationType;
 import com.example.kiwi_backend.common.realtime.UserMessageEvent;
 import com.example.kiwi_backend.contract.command.*;
 import com.example.kiwi_backend.contract.dto.*;
@@ -46,6 +48,11 @@ public class VoteService {
         access.recordVote(sessionId, memberId, now);
         if (context.completionRewardGem() > 0) {
             wallet.apply(GemCommand.completionRefund(memberId, sessionId, context.completionRewardGem()));
+            // 보증금은 투표 처음 제출 때 한 번만 돌려주므로 알림도 세션당 한 번
+            events.publishEvent(new NotificationEvent(memberId, NotificationType.COMPLETION_REFUND,
+                    "보증금을 돌려드렸어요",
+                    "투표를 완료해 보석 ◆" + context.completionRewardGem() + "개를 돌려드렸어요.",
+                    sessionId, null, "COMPLETION_REFUND:s" + sessionId + ":m" + memberId));
         }
         return new Submission(true, List.copyOf(targets));
     }
