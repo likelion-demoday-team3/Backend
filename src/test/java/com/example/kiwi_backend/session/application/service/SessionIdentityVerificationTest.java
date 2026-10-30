@@ -32,6 +32,7 @@ class SessionIdentityVerificationTest {
         var service = new SessionApplicationService(sessions, participants, members, wallet, aliases,
                 Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneOffset.UTC));
         when(members.getSummary(1L)).thenReturn(new MemberSummary(1L, Gender.FEMALE, true, false));
+        when(members.hasCompletedProfile(1L)).thenReturn(true);
         when(sessions.findByIdForUpdate(2L)).thenReturn(Optional.empty());
 
         // 본인인증 없이도 세션 조회 단계까지 진행된다

@@ -7,4 +7,7 @@ public interface MemberQueryService {
 
     /** 없는 회원이면 NotFoundException */
     MemberSummary getSummary(Long memberId);
+
+    /** 세션 신청에 필요한 프로필 카드를 다 채웠는가 (문장 4개 + 관심사 1개 이상). 프로필이 없으면 false */
+    boolean hasCompletedProfile(Long memberId);
 }
