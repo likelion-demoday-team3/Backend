@@ -39,19 +39,31 @@ public class AdminCallTestSessionService {
         Member host = findActiveMember(request.hostEmail());
         Member firstPartner = findActiveMember(request.firstPartnerEmail());
         Member secondPartner = findActiveMember(request.secondPartnerEmail());
-        List<Long> memberIds = List.of(host.getId(), firstPartner.getId(), secondPartner.getId());
-        if (new HashSet<>(memberIds).size() != 3) {
-            throw new IllegalArgumentException("서로 다른 활성 회원 세 명을 입력해 주세요");
+        boolean fivePeople = request.secondMaleEmail() != null && request.thirdFemaleEmail() != null;
+        if ((request.secondMaleEmail() == null) != (request.thirdFemaleEmail() == null)) {
+            throw new IllegalArgumentException("5인 테스트에는 남성 2명과 여성 3명이 필요합니다");
+        }
+        Member secondMale = fivePeople ? findActiveMember(request.secondMaleEmail()) : null;
+        Member thirdFemale = fivePeople ? findActiveMember(request.thirdFemaleEmail()) : null;
+        List<Long> memberIds = fivePeople
+                ? List.of(host.getId(), firstPartner.getId(), secondPartner.getId(), secondMale.getId(), thirdFemale.getId())
+                : List.of(host.getId(), firstPartner.getId(), secondPartner.getId());
+        if (new HashSet<>(memberIds).size() != memberIds.size()) {
+            throw new IllegalArgumentException("서로 다른 활성 회원을 입력해 주세요");
         }
 
         DatingSession session = sessionRepository.saveAndFlush(DatingSession.createCallTest(
-                now.plus(Duration.ofMinutes(3)), host.getId(), firstPartner.getId(), secondPartner.getId(), now));
+                now.plus(Duration.ofMinutes(5)), host.getId(), firstPartner.getId(), secondPartner.getId(), now));
 
         Set<String> aliases = new HashSet<>();
-        List<SessionParticipant> participants = List.of(
-                participant(session, host, Gender.MALE, aliases, now),
-                participant(session, firstPartner, Gender.FEMALE, aliases, now),
-                participant(session, secondPartner, Gender.FEMALE, aliases, now));
+        List<SessionParticipant> participants = new java.util.ArrayList<>();
+        participants.add(participant(session, host, Gender.MALE, aliases, now));
+        participants.add(participant(session, firstPartner, Gender.FEMALE, aliases, now));
+        participants.add(participant(session, secondPartner, Gender.FEMALE, aliases, now));
+        if (fivePeople) {
+            participants.add(participant(session, secondMale, Gender.MALE, aliases, now));
+            participants.add(participant(session, thirdFemale, Gender.FEMALE, aliases, now));
+        }
         participantRepository.saveAll(participants);
 
         return new CallTestSessionResponse(session.getId(), session.getStartTime(),

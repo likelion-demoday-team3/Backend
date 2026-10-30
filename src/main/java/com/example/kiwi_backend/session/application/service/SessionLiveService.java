@@ -141,6 +141,9 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
                                                  List<SessionParticipant> attended,
                                                  int male,
                                                  int female) {
+        if (attended.size() == 5) {
+            return male == 2 && female == 3;
+        }
         Set<Long> attendedIds = attended.stream()
                 .map(SessionParticipant::getMemberId)
                 .collect(java.util.stream.Collectors.toSet());

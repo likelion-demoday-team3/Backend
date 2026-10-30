@@ -37,6 +37,30 @@ class AdminCallTestSessionServiceTest {
 
     @Test
     @Transactional
+    void createsFivePersonCallTestWithTwoMaleAndThreeFemaleSeats() {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        String[] emails = {"host", "first", "second", "other", "third"};
+        List<Member> members = java.util.Arrays.stream(emails)
+                .map(name -> member(name + "." + suffix + "@sogang.ac.kr", suffix + name, Instant.now()))
+                .toList();
+        memberRepository.saveAllAndFlush(members);
+
+        var response = service.create(new CallTestSessionRequest(
+                members.get(0).getEmail(), members.get(1).getEmail(), members.get(2).getEmail(),
+                members.get(3).getEmail(), members.get(4).getEmail()));
+
+        DatingSession session = sessionRepository.findById(response.sessionId()).orElseThrow();
+        var participants = participantRepository.findAllBySessionIdAndStatus(
+                response.sessionId(), ParticipantStatus.APPLIED);
+        assertThat(session.getStatus()).isEqualTo(SessionStatus.READY);
+        assertThat(participants).hasSize(5);
+        assertThat(participants).extracting(p -> p.getGender())
+                .containsExactly(Gender.MALE, Gender.FEMALE, Gender.FEMALE, Gender.MALE, Gender.FEMALE);
+        assertThat(session.lobbyOpenAt()).isBeforeOrEqualTo(Instant.now());
+    }
+
+    @Test
+    @Transactional
     void createsReadyPrivateTestSessionWithTestOnlyGenderRolesAndRequestedPartners() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
         String hostEmail = "host." + suffix + "@sogang.ac.kr";
