@@ -9,6 +9,7 @@ import com.example.kiwi_backend.contract.dto.AttendanceResult;
 import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.contract.dto.LiveParticipant;
+import com.example.kiwi_backend.session.application.support.SessionNotifications;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
 import com.example.kiwi_backend.session.domain.entity.LiveStatus;
 import com.example.kiwi_backend.session.domain.entity.ParticipantStatus;
@@ -40,6 +41,7 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
     private final SessionParticipantRepository participantRepository;
     private final GemWallet gemWallet;
     private final Clock clock;
+    private final SessionNotifications notifications;
 
     @Override
     @Transactional
@@ -68,12 +70,14 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
         // 접속자 중 신청자 → 출석, 나머지 신청자 → 노쇼.
         // 신청자가 아닌 접속자는 무시한다 (isParticipant 검사를 통과해야 로비에 들어오므로 원래 없어야 함).
         List<SessionParticipant> attended = new ArrayList<>();
+        List<SessionParticipant> noShows = new ArrayList<>();
         for (SessionParticipant participant : applied) {
             if (connected.contains(participant.getMemberId())) {
                 participant.attend(); // ATTENDED로 설정
                 attended.add(participant);
             } else {
                 participant.markNoShow(); //NO_SHOW로 설정
+                noShows.add(participant);
             }
         }
 
@@ -86,6 +90,7 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
                 : ProceedPolicy.canProceed(male, female);
         if (canProceed) {
             session.startProgress();
+            notifications.noShow(session, noShows);
             log.info("로비 마감, 진행 sessionId={} male={} female={} firstRoundAt={}",
                     sessionId, male, female, session.getPhaseEndsAt());
             // [제안 3] 별칭까지 담아서 돌려준다
@@ -97,6 +102,7 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
 
         session.cancel();
         refundAll(session, attended);
+        notifications.cancelledForLowAttendance(session, attended, noShows);
         log.info("로비 마감, 출석 미달 취소 sessionId={} male={} female={} noShow={}",
                 sessionId, male, female, applied.size() - attended.size());
         return AttendanceResult.cancelled(sessionId);

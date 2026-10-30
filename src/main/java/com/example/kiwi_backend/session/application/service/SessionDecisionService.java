@@ -4,6 +4,7 @@ import com.example.kiwi_backend.common.exception.NotFoundException;
 import com.example.kiwi_backend.contract.command.GemWallet;
 import com.example.kiwi_backend.contract.dto.GemCommand;
 import com.example.kiwi_backend.contract.dto.Gender;
+import com.example.kiwi_backend.session.application.support.SessionNotifications;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
 import com.example.kiwi_backend.session.domain.entity.ParticipantStatus;
 import com.example.kiwi_backend.session.domain.entity.SessionParticipant;
@@ -30,6 +31,7 @@ public class SessionDecisionService {
     private final DatingSessionRepository sessionRepository;
     private final SessionParticipantRepository participantRepository;
     private final GemWallet gemWallet;
+    private final SessionNotifications notifications;
 
     /**
      * 시작 30분 전 판단. 진행 조건을 넘으면 READY, 못 넘으면 CANCELLED + 신청자 전원 100% 환불.
@@ -49,9 +51,11 @@ public class SessionDecisionService {
 
         if (ProceedPolicy.canProceed(male, female)) {
             session.markReady();
+            notifications.confirmed(session, applied);
             log.info("세션 진행 확정 sessionId={} male={} female={}", sessionId, male, female);
         } else {
             cancelWithFullRefund(session, applied);
+            notifications.cancelledForLowApplicants(session, applied);
             log.info("세션 인원 미달 취소 sessionId={} male={} female={}", sessionId, male, female);
         }
     }
@@ -69,6 +73,7 @@ public class SessionDecisionService {
         List<SessionParticipant> applied =
                 participantRepository.findAllBySessionIdAndStatus(sessionId, ParticipantStatus.APPLIED);
         cancelWithFullRefund(session, applied);
+        notifications.cancelledByAdmin(session, applied);
         return applied.size();
     }
 

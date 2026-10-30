@@ -1,6 +1,9 @@
 package com.example.kiwi_backend.interaction.application;
 
 import com.example.kiwi_backend.common.exception.ContactUnavailableException;
+import com.example.kiwi_backend.common.notification.NotificationEvent;
+import com.example.kiwi_backend.common.notification.NotificationTexts;
+import com.example.kiwi_backend.common.notification.NotificationType;
 import com.example.kiwi_backend.common.realtime.UserMessageEvent;
 import com.example.kiwi_backend.contract.command.*;
 import com.example.kiwi_backend.contract.dto.*;
@@ -37,7 +40,12 @@ public class ContactService {
         windows.requireContactOpen(sessionId, sender);
         requireContact(sender, type);
         debit(sender, sessionId, GemTransactionType.CONTACT_SEND, "CONTACT_SEND:s" + sessionId + ":f" + sender + ":t" + receiver);
-        return shareView(saveShare(sessionId, sender, receiver, type, ContactShare.ShareType.MANUAL));
+        var share = saveShare(sessionId, sender, receiver, type, ContactShare.ShareType.MANUAL);
+        notify(receiver, NotificationType.CONTACT_RECEIVED, "연락처가 도착했어요",
+                NotificationTexts.partner(aliasOf(sessionId, sender)) + "이 "
+                        + NotificationTexts.contactLabel(type) + "를 보냈어요.",
+                sessionId, "CONTACT_RECEIVED:share" + share.getId());
+        return shareView(share);
     }
 
     @Transactional
@@ -51,6 +59,10 @@ public class ContactService {
         requireTargetContact(target, type);
         var request = requests.saveAndFlush(ContactRequest.create(sessionId, requester, target, type, clock.instant()));
         events.publishEvent(new UserMessageEvent(target, "/queue/live/contact-requested", requestView(request)));
+        notify(target, NotificationType.CONTACT_REQUESTED, "연락처 요청이 왔어요",
+                NotificationTexts.partner(aliasOf(sessionId, requester)) + "이 "
+                        + NotificationTexts.contactLabel(type) + "를 요청했어요.",
+                sessionId, "CONTACT_REQUESTED:r" + request.getId());
         return requestView(request);
     }
 
@@ -74,6 +86,17 @@ public class ContactService {
         }
         request.respond(accept, cost, clock.instant());
         events.publishEvent(new UserMessageEvent(request.getRequesterId(), "/queue/live/contact-request-answered", requestView(request)));
+        String responder = NotificationTexts.partner(aliasOf(sessionId, memberId));
+        String label = NotificationTexts.contactLabel(request.getContactType());
+        if (accept) {
+            notify(request.getRequesterId(), NotificationType.CONTACT_REQUEST_ACCEPTED, "연락처 요청이 수락됐어요",
+                    responder + "이 " + label + " 요청을 수락했어요. 연락처를 확인해보세요.",
+                    sessionId, "CONTACT_REQUEST_ANSWERED:r" + requestId);
+        } else {
+            notify(request.getRequesterId(), NotificationType.CONTACT_REQUEST_REJECTED, "연락처 요청이 거절됐어요",
+                    responder + "이 " + label + " 요청을 거절했어요.",
+                    sessionId, "CONTACT_REQUEST_ANSWERED:r" + requestId);
+        }
         return requestView(request);
     }
 
@@ -171,6 +194,16 @@ public class ContactService {
     }
 
     private record SessionInfo(Instant startTime, Map<Long, String> aliases) { }
+
+    /** 연락처 알림은 결과 화면을 닫은 뒤에도 오가므로 알림함에도 남긴다. 누르면 그 세션의 연락처 교환 화면으로 간다 */
+    private void notify(Long memberId, NotificationType type, String title, String body, Long sessionId, String dedupeKey) {
+        events.publishEvent(new NotificationEvent(memberId, type, title, body, sessionId,
+                "/contact?sessionId=" + sessionId, dedupeKey));
+    }
+
+    private String aliasOf(Long sessionId, Long memberId) {
+        return sessionInfo(sessionId).aliases().get(memberId);
+    }
 
     private RequestView requestView(ContactRequest request) {
         return new RequestView(request.getId(), request.getSessionId(), request.getRequesterId(), request.getTargetId(),

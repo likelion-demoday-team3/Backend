@@ -1,6 +1,8 @@
 package com.example.kiwi_backend.interaction.application;
 
 import com.example.kiwi_backend.common.exception.ContactUnavailableException;
+import com.example.kiwi_backend.common.notification.NotificationType;
+import com.example.kiwi_backend.notification.application.NotificationService;
 import com.example.kiwi_backend.contract.dto.*;
 import com.example.kiwi_backend.contract.query.MemberContactQuery;
 import com.example.kiwi_backend.interaction.domain.*;
@@ -33,6 +35,7 @@ class ContactTransactionTest {
     @Autowired WalletService wallet;
     @Autowired ApplicationEventPublisher events;
     @Autowired PlatformTransactionManager transactionManager;
+    @Autowired NotificationService notifications;
     @MockitoBean MemberContactQuery contactQuery;
     private Long sessionId;
     private long sender;
@@ -116,6 +119,52 @@ class ContactTransactionTest {
         assertThat(shares.findBySessionIdAndSenderIdAndReceiverId(sessionId, target, sender)).isPresent();
         assertThat(wallet.getBalance(sender).gemBalance()).isZero();
         assertThat(service.shareHistory(target, 0, 20).items()).hasSize(2);
+    }
+
+    @Test
+    void contactRequestAnswerAndSendLeaveNotificationsInInbox() {
+        windows.closeResults(sessionId, sender);
+        windows.closeResults(sessionId, target);
+        wallet.apply(GemCommand.adminGrant(sender, 1, "test", UUID.randomUUID().toString()));
+        wallet.apply(GemCommand.adminGrant(target, 1, "test", UUID.randomUUID().toString()));
+
+        var request = service.request(sessionId, sender, target, ContactType.PHONE);
+        var requested = notifications.list(target, 0, 20).items();
+        assertThat(requested).singleElement().satisfies(item -> {
+            assertThat(item.type()).isEqualTo(NotificationType.CONTACT_REQUESTED);
+            assertThat(item.body()).isEqualTo("alias-" + sender + "님이 전화번호를 요청했어요.");
+            assertThat(item.link()).isEqualTo("/contact?sessionId=" + sessionId);
+        });
+
+        service.respond(sessionId, request.id(), target, true);
+        service.respond(sessionId, request.id(), target, true);   // 다시 눌러도 알림은 하나
+        assertThat(notifications.list(sender, 0, 20).items()).singleElement().satisfies(item -> {
+            assertThat(item.type()).isEqualTo(NotificationType.CONTACT_REQUEST_ACCEPTED);
+            assertThat(item.body()).contains("alias-" + target + "님이 전화번호 요청을 수락했어요");
+        });
+
+        // 다른 참가자(여)가 sender(남)에게 직접 보내면 sender에게 '연락처 도착' 알림
+        long third = sender + 2;
+        windows.closeResults(sessionId, third);
+        wallet.apply(GemCommand.adminGrant(third, 1, "test", UUID.randomUUID().toString()));
+        service.send(sessionId, third, sender, ContactType.PHONE);
+        assertThat(notifications.list(sender, 0, 20).items().getFirst()).satisfies(item -> {
+            assertThat(item.type()).isEqualTo(NotificationType.CONTACT_RECEIVED);
+            assertThat(item.body()).isEqualTo("alias-" + third + "님이 전화번호를 보냈어요.");
+        });
+    }
+
+    @Test
+    void rejectedRequestNotifiesRequester() {
+        windows.closeResults(sessionId, sender);
+        var request = service.request(sessionId, sender, target, ContactType.PHONE);
+
+        service.respond(sessionId, request.id(), target, false);
+
+        assertThat(notifications.list(sender, 0, 20).items()).singleElement().satisfies(item -> {
+            assertThat(item.type()).isEqualTo(NotificationType.CONTACT_REQUEST_REJECTED);
+            assertThat(item.body()).isEqualTo("alias-" + target + "님이 전화번호 요청을 거절했어요.");
+        });
     }
 
     @Test

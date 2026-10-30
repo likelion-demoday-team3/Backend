@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.session.application.service;
 
 import com.example.kiwi_backend.contract.command.GemWallet;
+import com.example.kiwi_backend.session.application.support.SessionNotifications;
 import com.example.kiwi_backend.contract.dto.AttendanceResult;
 import com.example.kiwi_backend.contract.dto.Gender;
 import com.example.kiwi_backend.session.domain.entity.DatingSession;
@@ -54,7 +55,7 @@ class SessionLiveCallTestTest {
         when(participantRepository.findAllBySessionIdAndStatus(8L, ParticipantStatus.APPLIED))
                 .thenReturn(participants);
         SessionLiveService service = new SessionLiveService(sessionRepository, participantRepository,
-                mock(GemWallet.class), Clock.fixed(closeAt, ZoneOffset.UTC));
+                mock(GemWallet.class), Clock.fixed(closeAt, ZoneOffset.UTC), mock(SessionNotifications.class));
 
         AttendanceResult result = service.finalizeAttendance(8L, Set.of(1L, 2L, 3L));
 
@@ -78,7 +79,8 @@ class SessionLiveCallTestTest {
         when(participantRepository.findAllBySessionIdAndStatus(8L, ParticipantStatus.APPLIED))
                 .thenReturn(participants);
         SessionLiveService service = new SessionLiveService(sessionRepository, participantRepository,
-                mock(GemWallet.class), Clock.fixed(session.lobbyCloseAt(), ZoneOffset.UTC));
+                mock(GemWallet.class), Clock.fixed(session.lobbyCloseAt(), ZoneOffset.UTC),
+                mock(SessionNotifications.class));
 
         AttendanceResult result = service.finalizeAttendance(8L, Set.of(1L, 2L));
 
