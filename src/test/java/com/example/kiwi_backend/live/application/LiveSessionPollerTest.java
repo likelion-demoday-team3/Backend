@@ -47,7 +47,7 @@ class LiveSessionPollerTest {
     }
 
     @Test
-    void startsCallTestWithoutCallingLinerCompatibilityPreparation() {
+    void waitsForLinerCompatibilityInCallTest() {
         var query = mock(SessionQueryService.class);
         var start = mock(LiveSessionStartService.class);
         var rounds = mock(LiveRoundSchedulerService.class);
@@ -58,7 +58,8 @@ class LiveSessionPollerTest {
 
         new LiveSessionPoller(query, start, rounds, compatibility, Clock.fixed(now, ZoneOffset.UTC)).poll();
 
-        verify(rounds).startSessionRounds(3L);
-        verifyNoInteractions(compatibility);
+        verify(compatibility).isPrepared(3L);
+        verify(compatibility).requestPreparation(3L);
+        verifyNoInteractions(rounds);
     }
 }

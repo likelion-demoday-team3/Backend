@@ -71,42 +71,28 @@ public class LiveRoundBroadcastService {
             memberIds.add(room.getFemaleMemberId());
         }
         SessionQueryService sessionQueryService = sessionQueryServiceProvider.getIfAvailable();
-        boolean callTest = sessionQueryService != null && sessionQueryService.isCallTestSession(sessionId);
         Map<Long, PartnerProfileCard> profileCards = profileQueryService.getCards(memberIds);
-        if (callTest) {
-            profileCards = profileCards == null ? new HashMap<>() : new HashMap<>(profileCards);
-            for (Long memberId : memberIds) {
-                profileCards.putIfAbsent(memberId,
-                        new PartnerProfileCard(memberId, "", "", "", "", "", List.of()));
-            }
-        } else {
-            if (profileCards == null) {
+        if (profileCards == null) {
+            throw new IllegalStateException("라운드 참가자 프로필 카드가 없습니다");
+        }
+        for (Long memberId : memberIds) {
+            if (profileCards.get(memberId) == null) {
                 throw new IllegalStateException("라운드 참가자 프로필 카드가 없습니다");
-            }
-            for (Long memberId : memberIds) {
-                if (profileCards.get(memberId) == null) {
-                    throw new IllegalStateException("라운드 참가자 프로필 카드가 없습니다");
-                }
             }
         }
         final Map<Long, PartnerProfileCard> cards = profileCards;
         Map<Long, CompatibilitySummary> compatibilityByRoomId = new HashMap<>();
-        if (callTest) {
-            CompatibilitySummary testSummary = new CompatibilitySummary(0, "통화 연결 테스트");
-            rooms.forEach(room -> compatibilityByRoomId.put(room.getId(), testSummary));
-        } else {
-            CompatQueryService compatQueryService = compatQueryServiceProvider.getIfAvailable();
-            if (compatQueryService == null) {
-                throw new IllegalStateException("CompatQueryService 구현체가 필요합니다");
+        CompatQueryService compatQueryService = compatQueryServiceProvider.getIfAvailable();
+        if (compatQueryService == null) {
+            throw new IllegalStateException("CompatQueryService 구현체가 필요합니다");
+        }
+        for (LiveRoom room : rooms) {
+            CompatibilitySummary compatibility = compatQueryService.getCompatibility(
+                    sessionId, room.getMaleMemberId(), room.getFemaleMemberId());
+            if (compatibility == null) {
+                throw new IllegalStateException("라운드 참가자 궁합 결과가 없습니다");
             }
-            for (LiveRoom room : rooms) {
-                CompatibilitySummary compatibility = compatQueryService.getCompatibility(
-                        sessionId, room.getMaleMemberId(), room.getFemaleMemberId());
-                if (compatibility == null) {
-                    throw new IllegalStateException("라운드 참가자 궁합 결과가 없습니다");
-                }
-                compatibilityByRoomId.put(room.getId(), compatibility);
-            }
+            compatibilityByRoomId.put(room.getId(), compatibility);
         }
 
         Map<Long, String> aliases = aliasesOf(sessionId, sessionQueryService);

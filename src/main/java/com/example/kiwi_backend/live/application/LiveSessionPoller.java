@@ -29,9 +29,7 @@ public class LiveSessionPoller {
         }
         for (Long sessionId : sessionQueryService.findSessionIdsDueForFirstRound(clock.instant())) {
             try {
-                if (sessionQueryService.isCallTestSession(sessionId)) {
-                    roundSchedulerService.startSessionRounds(sessionId);
-                } else if (compatibilityPreparationService.isPrepared(sessionId)) {
+                if (compatibilityPreparationService.isPrepared(sessionId)) {
                     roundSchedulerService.startSessionRounds(sessionId);
                 } else {
                     compatibilityPreparationService.requestPreparation(sessionId);

@@ -118,7 +118,7 @@ class LiveRoundBroadcastServiceTest {
     }
 
     @Test
-    void callTestBroadcastUsesPlaceholderCompatibilityWithoutQueryingLinerResults() {
+    void callTestBroadcastUsesPreparedLinerResult() {
         LiveRound round = startedRound(10L, 1L, 1);
         LiveRoom room = persistedRoom(100L, round, 1, 101L, 201L);
         when(liveRoundRepository.findBySessionIdAndRoundNumber(10L, 1)).thenReturn(Optional.of(round));
@@ -127,6 +127,9 @@ class LiveRoundBroadcastServiceTest {
                 101L, card(101L), 201L, card(201L)));
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
         when(sessionQueryService.isCallTestSession(10L)).thenReturn(true);
+        when(compatQueryServiceProvider.getIfAvailable()).thenReturn(compatQueryService);
+        when(compatQueryService.getCompatibility(10L, 101L, 201L))
+                .thenReturn(new CompatibilitySummary(82, "관심사가 잘 맞습니다."));
         when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
                 new LiveParticipant(101L, Gender.MALE, "host"),
                 new LiveParticipant(201L, Gender.FEMALE, "partner")));
@@ -139,8 +142,7 @@ class LiveRoundBroadcastServiceTest {
                 anyString(), anyString(), messageCaptor.capture());
         assertThat(messageCaptor.getAllValues())
                 .extracting(LiveRoundAssignmentMessage::compatibility)
-                .containsOnly(new CompatibilitySummary(0, "통화 연결 테스트"));
-        verifyNoInteractions(compatQueryServiceProvider, compatQueryService);
+                .containsOnly(new CompatibilitySummary(82, "관심사가 잘 맞습니다."));
     }
 
     @Test
