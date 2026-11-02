@@ -131,7 +131,7 @@ public class DatingSession extends BaseTimeEntity {
         }
 
         DatingSession session = new DatingSession();
-        session.applySettings(startTime, 3, 60, 120, 600, 0, 0, now);
+        session.applySettings(startTime, 3, 180, 120, 600, 0, 0, now);
         session.status = SessionStatus.READY;
         session.liveStatus = LiveStatus.WAITING;
         session.currentRoundNumber = 0;

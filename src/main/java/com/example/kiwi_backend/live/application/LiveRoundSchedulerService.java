@@ -1,10 +1,10 @@
 package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.command.SessionLiveStatusCommand;
+import com.example.kiwi_backend.contract.query.SessionQueryService;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,16 +25,15 @@ public class LiveRoundSchedulerService {
     private final LiveHeartPhaseService liveHeartPhaseService;
     private final TaskScheduler taskScheduler;
     private final SessionLiveStatusCommand sessionLiveStatusCommand;
+    private final SessionQueryService sessionQueryService;
     private final Set<Long> runningSessionIds = ConcurrentHashMap.newKeySet();
-
-    @Value("${app.live.round-duration-seconds:180}")
-    private int roundDurationSeconds;
 
     @Transactional
     public LiveRoundSchedulerResult startSessionRounds(Long sessionId) {
         if (sessionId == null) {
             throw new IllegalArgumentException("sessionId must not be null");
         }
+        int roundDurationSeconds = sessionQueryService.getRoundDurationSeconds(sessionId);
         if (roundDurationSeconds < 1) {
             throw new IllegalStateException("roundDurationSeconds must be positive");
         }
@@ -61,7 +60,7 @@ public class LiveRoundSchedulerService {
         });
         try {
             liveRoundStateService.startRound(sessionId, firstRoundNumber, Instant.now());
-            LiveAfterCommit.run(() -> scheduleRoundEnd(sessionId, firstRoundNumber));
+            LiveAfterCommit.run(() -> scheduleRoundEnd(sessionId, firstRoundNumber, roundDurationSeconds));
         } catch (RuntimeException e) {
             runningSessionIds.remove(sessionId);
             throw e;
@@ -70,19 +69,19 @@ public class LiveRoundSchedulerService {
         return new LiveRoundSchedulerResult(sessionId, firstRoundNumber, roundDurationSeconds);
     }
 
-    private void startRoundAndScheduleEnd(Long sessionId, int roundNumber) {
+    private void startRoundAndScheduleEnd(Long sessionId, int roundNumber, int roundDurationSeconds) {
         liveRoundStateService.startRound(sessionId, roundNumber, Instant.now());
-        scheduleRoundEnd(sessionId, roundNumber);
+        scheduleRoundEnd(sessionId, roundNumber, roundDurationSeconds);
     }
 
-    private void scheduleRoundEnd(Long sessionId, int roundNumber) {
+    private void scheduleRoundEnd(Long sessionId, int roundNumber, int roundDurationSeconds) {
         taskScheduler.schedule(
-                () -> completeRoundAndScheduleNext(sessionId, roundNumber),
+                () -> completeRoundAndScheduleNext(sessionId, roundNumber, roundDurationSeconds),
                 Instant.now().plusSeconds(roundDurationSeconds)
         );
     }
 
-    private void completeRoundAndScheduleNext(Long sessionId, int roundNumber) {
+    private void completeRoundAndScheduleNext(Long sessionId, int roundNumber, int roundDurationSeconds) {
         LiveRoundAdvanceResult result = liveRoundStateService.completeAndPrepareNextRound(
                 sessionId,
                 roundNumber,
@@ -90,7 +89,7 @@ public class LiveRoundSchedulerService {
         );
 
         if (result.nextRoundExists()) {
-            scheduleNextRoundStart(sessionId, result.nextRoundNumber(), result.breakSeconds());
+            scheduleNextRoundStart(sessionId, result.nextRoundNumber(), result.breakSeconds(), roundDurationSeconds);
             return;
         }
         try {
@@ -100,9 +99,9 @@ public class LiveRoundSchedulerService {
         }
     }
 
-    private void scheduleNextRoundStart(Long sessionId, int nextRoundNumber, int breakSeconds) {
+    private void scheduleNextRoundStart(Long sessionId, int nextRoundNumber, int breakSeconds, int roundDurationSeconds) {
         taskScheduler.schedule(
-                () -> startRoundAndScheduleEnd(sessionId, nextRoundNumber),
+                () -> startRoundAndScheduleEnd(sessionId, nextRoundNumber, roundDurationSeconds),
                 Instant.now().plusSeconds(breakSeconds)
         );
     }

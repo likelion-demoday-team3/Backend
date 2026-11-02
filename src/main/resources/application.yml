@@ -54,8 +54,6 @@ app:
     secret: ${JWT_SECRET}
     access-ttl: 7d
     signup-ttl: 30m
-  live:
-        round-duration-seconds: 180
   rtc:
     turn-urls: ${RTC_TURN_URLS:}
     turn-shared-secret: ${RTC_TURN_SHARED_SECRET:}

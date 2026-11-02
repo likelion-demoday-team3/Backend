@@ -6,11 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import com.example.kiwi_backend.contract.command.SessionLiveStatusCommand;
+import com.example.kiwi_backend.contract.query.SessionQueryService;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.mockito.ArgumentCaptor;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,18 +30,21 @@ class LiveRoundSchedulerServiceTest {
     private final LiveHeartPhaseService liveHeartPhaseService = mock(LiveHeartPhaseService.class);
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
     private final SessionLiveStatusCommand statusCommand = mock(SessionLiveStatusCommand.class);
+    private final SessionQueryService sessionQueryService = mock(SessionQueryService.class);
 
     private final LiveRoundSchedulerService service = new LiveRoundSchedulerService(
             liveRoundRepository,
             liveRoundStateService,
             liveHeartPhaseService,
             taskScheduler,
-            statusCommand
+            statusCommand,
+            sessionQueryService
     );
 
     @BeforeEach
     void beginTransaction() {
         TransactionSynchronizationManager.initSynchronization();
+        when(sessionQueryService.getRoundDurationSeconds(10L)).thenReturn(600);
     }
 
     @AfterEach
@@ -57,23 +60,25 @@ class LiveRoundSchedulerServiceTest {
 
     @Test
     void startSessionRoundsStartsFirstRoundAndSchedulesEnd() {
-        ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1), LiveRound.create(10L, 2)));
 
+        Instant before = Instant.now();
         LiveRoundSchedulerResult result = startAndCommit();
+        Instant after = Instant.now();
 
         assertThat(result.sessionId()).isEqualTo(10L);
         assertThat(result.firstRoundNumber()).isEqualTo(1);
-        assertThat(result.roundDurationSeconds()).isEqualTo(180);
+        assertThat(result.roundDurationSeconds()).isEqualTo(600);
 
         verify(liveRoundStateService).startRound(eq(10L), eq(1), any(Instant.class));
-        verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+        ArgumentCaptor<Instant> endAt = ArgumentCaptor.forClass(Instant.class);
+        verify(taskScheduler).schedule(any(Runnable.class), endAt.capture());
+        assertThat(endAt.getValue()).isBetween(before.plusSeconds(600), after.plusSeconds(600));
     }
 
     @Test
     void scheduledEndPreparesNextRoundAndSchedulesNextStart() {
-        ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1), LiveRound.create(10L, 2)));
         when(liveRoundStateService.completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class)))
@@ -88,11 +93,22 @@ class LiveRoundSchedulerServiceTest {
 
         verify(liveRoundStateService).completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class));
         verify(taskScheduler, org.mockito.Mockito.times(2)).schedule(any(Runnable.class), any(Instant.class));
+
+        ArgumentCaptor<Runnable> nextStart = ArgumentCaptor.forClass(Runnable.class);
+        verify(taskScheduler, org.mockito.Mockito.times(2)).schedule(nextStart.capture(), any(Instant.class));
+        Instant beforeNextRound = Instant.now();
+        nextStart.getAllValues().get(1).run();
+        Instant afterNextRound = Instant.now();
+
+        verify(liveRoundStateService).startRound(eq(10L), eq(2), any(Instant.class));
+        ArgumentCaptor<Instant> scheduledAt = ArgumentCaptor.forClass(Instant.class);
+        verify(taskScheduler, org.mockito.Mockito.times(3)).schedule(any(Runnable.class), scheduledAt.capture());
+        assertThat(scheduledAt.getAllValues().get(2))
+                .isBetween(beforeNextRound.plusSeconds(600), afterNextRound.plusSeconds(600));
     }
 
     @Test
     void startSessionRoundsRejectsAlreadyRunningSession() {
-        ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1)));
 
@@ -105,7 +121,6 @@ class LiveRoundSchedulerServiceTest {
 
     @Test
     void startSessionRoundsRejectsSessionWithoutRounds() {
-        ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of());
 
@@ -116,7 +131,6 @@ class LiveRoundSchedulerServiceTest {
 
     @Test
     void lastRoundStartsHeartsInsteadOfSchedulingAnotherRound() {
-        ReflectionTestUtils.setField(service, "roundDurationSeconds", 180);
         when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
                 .thenReturn(List.of(LiveRound.create(10L, 1)));
         when(liveRoundStateService.completeAndPrepareNextRound(eq(10L), eq(1), any(Instant.class)))
@@ -130,5 +144,21 @@ class LiveRoundSchedulerServiceTest {
 
         verify(liveHeartPhaseService).startHearts(eq(10L), any(Instant.class));
         verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+    }
+
+    @Test
+    void testSessionUsesItsOwnThreeMinuteDuration() {
+        when(sessionQueryService.getRoundDurationSeconds(10L)).thenReturn(180);
+        when(liveRoundRepository.findAllBySessionIdOrderByRoundNumberAsc(10L))
+                .thenReturn(List.of(LiveRound.create(10L, 1)));
+
+        Instant before = Instant.now();
+        LiveRoundSchedulerResult result = startAndCommit();
+        Instant after = Instant.now();
+
+        assertThat(result.roundDurationSeconds()).isEqualTo(180);
+        ArgumentCaptor<Instant> endAt = ArgumentCaptor.forClass(Instant.class);
+        verify(taskScheduler).schedule(any(Runnable.class), endAt.capture());
+        assertThat(endAt.getValue()).isBetween(before.plusSeconds(180), after.plusSeconds(180));
     }
 }

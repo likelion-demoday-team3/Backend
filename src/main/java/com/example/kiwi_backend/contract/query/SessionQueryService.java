@@ -28,6 +28,9 @@ public interface SessionQueryService {
     /** 세션 시작 시각. 없는 세션이면 NotFoundException */
     Instant getStartTime(Long sessionId);
 
+    /** 세션에 저장된 라운드당 대화 시간(초). 없는 세션이면 NotFoundException */
+    int getRoundDurationSeconds(Long sessionId);
+
     /** 이 세션의 로비 마감 시각 (= 시작 시각, 일반 세션·통화 테스트 공통) */
     Instant getLobbyCloseAt(Long sessionId);
 

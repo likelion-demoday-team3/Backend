@@ -67,6 +67,13 @@ public class SessionQueryServiceImpl implements SessionQueryService {
     }
 
     @Override
+    public int getRoundDurationSeconds(Long sessionId) {
+        return sessionRepository.findById(sessionId)
+                .map(DatingSession::getRoundDurationSeconds)
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+    }
+
+    @Override
     public Instant getLobbyCloseAt(Long sessionId) {
         return sessionRepository.findById(sessionId)
                 .map(DatingSession::lobbyCloseAt)

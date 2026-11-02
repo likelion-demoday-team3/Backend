@@ -30,7 +30,10 @@ class SessionLiveCallTestTest {
         Instant createdAt = Instant.parse("2026-10-29T10:00:00Z");
         Instant startTime = createdAt.plusSeconds(180);
         DatingSession test = DatingSession.createCallTest(startTime, 1L, 2L, 3L, createdAt);
-        DatingSession regular = DatingSession.create(startTime, 3, 180, 120, 600, 0, 0, createdAt);
+        DatingSession regular = DatingSession.create(startTime, 3, 600, 120, 600, 0, 0, createdAt);
+
+        assertThat(test.getRoundDurationSeconds()).isEqualTo(180);
+        assertThat(regular.getRoundDurationSeconds()).isEqualTo(600);
 
         assertThat(test.lobbyCloseAt()).isEqualTo(startTime);
         assertThat(test.firstRoundAt()).isEqualTo(startTime.plusSeconds(15));
