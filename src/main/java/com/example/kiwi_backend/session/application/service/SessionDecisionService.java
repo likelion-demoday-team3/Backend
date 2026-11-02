@@ -21,7 +21,7 @@ import java.util.List;
 
 /**
  * 세션 진행 여부 판단과 세션 취소.
- * 30분 전 판단은 스케줄러가, 운영자 취소는 운영자 API가 부른다.
+ * 10분 전 판단은 스케줄러가, 운영자 취소는 운영자 API가 부른다.
  */
 @Slf4j
 @Service
@@ -34,7 +34,7 @@ public class SessionDecisionService {
     private final SessionNotifications notifications;
 
     /**
-     * 시작 30분 전 판단. 진행 조건을 넘으면 READY, 못 넘으면 CANCELLED + 신청자 전원 100% 환불.
+     * 시작 10분 전 판단. 진행 조건을 넘으면 READY, 못 넘으면 CANCELLED + 신청자 전원 100% 환불.
      * 두 번 실행돼도 안전하다: 이미 판단한 세션은 RECRUITING이 아니라서 건너뛴다.
      */
     @Transactional

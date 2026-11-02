@@ -16,7 +16,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
-import java.time.Duration;
 import java.time.Instant;
 
 @Controller
@@ -41,11 +40,7 @@ public class LiveWebSocketController {
         if (sessionQueryService == null) {
             throw new IllegalStateException("SessionQueryService 구현체가 필요합니다");
         }
-        Instant startTime = sessionQueryService.getStartTime(request.sessionId());
-        if (startTime == null) {
-            throw new IllegalStateException("세션 시작 시각을 찾을 수 없습니다");
-        }
-        Instant openAt = startTime.minus(Duration.ofMinutes(5));
+        Instant openAt = sessionQueryService.getLobbyOpenAt(request.sessionId());
         Instant closeAt = sessionQueryService.getLobbyCloseAt(request.sessionId());
         lobbyPresenceService.join(request.sessionId(), memberId, websocketSessionId, openAt, closeAt);
 

@@ -146,10 +146,10 @@ class SessionNotificationFlowTest {
         return items.getFirst();
     }
 
-    /** 시작 10분 전이라 바로 30분 전 판단 대상인 모집 중 세션 */
+    /** 시작 5분 전이라 바로 10분 전 판단 대상인 모집 중 세션 */
     private Long recruitingSession(int fee) {
         Instant now = Instant.now();
-        DatingSession session = DatingSession.create(now.plusSeconds(600), 3, 180, 120, 300, fee, 0,
+        DatingSession session = DatingSession.create(now.plusSeconds(300), 3, 180, 120, 300, fee, 0,
                 now.minusSeconds(7200));
         session.openRecruiting(now.minusSeconds(7200));
         return sessions.saveAndFlush(session).getId();

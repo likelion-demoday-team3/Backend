@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * @Scheduled 사용 설정 (세션 30분 전 판단, A의 로비 마감·1라운드 시작 주기 조회 등).
+ * @Scheduled 사용 설정 (세션 10분 전 판단, A의 로비 마감·1라운드 시작 주기 조회 등).
  *
  * app.scheduling.enabled=false 로 끌 수 있다. 통합 테스트에서 스케줄러가 테스트 데이터를
  * 마음대로 처리하지 않도록 끄기 위한 용도. 설정이 없으면 켜진다.

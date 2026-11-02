@@ -6,9 +6,9 @@ package com.example.kiwi_backend.common.notification;
  */
 public enum NotificationType {
     // ===== 세션 진행·취소 =====
-    /** 시작 30분 전 진행 확정 */
+    /** 시작 10분 전 진행 확정 */
     SESSION_CONFIRMED,
-    /** 시작 30분 전 신청 인원 미달로 자동 취소 (전원 환불) */
+    /** 시작 10분 전 신청 인원 미달로 자동 취소 (전원 환불) */
     SESSION_CANCELLED_LOW_APPLICANTS,
     /** 운영자 취소, 또는 신청자가 있어 삭제 대신 취소 (전원 환불) */
     SESSION_CANCELLED_BY_ADMIN,

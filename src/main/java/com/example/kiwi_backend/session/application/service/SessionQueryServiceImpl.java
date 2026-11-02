@@ -51,7 +51,7 @@ public class SessionQueryServiceImpl implements SessionQueryService {
         }
         Instant now = clock.instant();
         return switch (session.getStatus()) {
-            // 세션이 READY(참가 마감 19:30 ~ 로비 마감 20:00 사이)인 경우 참가자가 APPLIED이고 로비가 open일 경우 TRUE
+            // 세션이 READY(참가 마감 19:50 ~ 로비 마감 20:00 사이)인 경우 참가자가 APPLIED이고 로비가 open일 경우 TRUE
             case READY -> participant.getStatus() == ParticipantStatus.APPLIED && session.isLobbyOpen(now);
             // 세션이 IN_PROGRESS(로비 끝, 세션 시작)인 경우 참가자가 ATTENDED일 경우 TRUE
             case IN_PROGRESS -> participant.getStatus() == ParticipantStatus.ATTENDED;
@@ -70,6 +70,13 @@ public class SessionQueryServiceImpl implements SessionQueryService {
     public int getRoundDurationSeconds(Long sessionId) {
         return sessionRepository.findById(sessionId)
                 .map(DatingSession::getRoundDurationSeconds)
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+    }
+
+    @Override
+    public Instant getLobbyOpenAt(Long sessionId) {
+        return sessionRepository.findById(sessionId)
+                .map(DatingSession::lobbyOpenAt)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
     }
 

@@ -21,11 +21,11 @@ public class DatingSession extends BaseTimeEntity {
 
     // ===== 시간 규칙 (한곳에 모아둠. 바꿀 땐 여기만) =====
 
-    /** 신청 마감 = 1차 진행 판단 = 시작 30분 전 */
-    public static final Duration APPLY_CLOSE_BEFORE = Duration.ofMinutes(30);
+    /** 신청 마감 = 1차 진행 판단 = 시작 10분 전 */
+    public static final Duration APPLY_CLOSE_BEFORE = Duration.ofMinutes(10);
 
-    /** 로비 오픈 = 시작 5분 전 */
-    public static final Duration LOBBY_OPEN_BEFORE = Duration.ofMinutes(5);
+    /** 로비 오픈 = 시작 10분 전 (신청 마감·진행 판단과 같은 시각) */
+    public static final Duration LOBBY_OPEN_BEFORE = Duration.ofMinutes(10);
 
     /** 로비 마감 = 출석 확정 = 시작 시각 (일반 세션·통화 테스트 공통) */
     public static final Duration LOBBY_CLOSE_AFTER = Duration.ZERO;
@@ -268,7 +268,7 @@ public class DatingSession extends BaseTimeEntity {
         return status == SessionStatus.RECRUITING && now.isBefore(applyDeadline());
     }
 
-    /** 30분 전 진행 판단을 할 차례인가 */
+    /** 10분 전 진행 판단을 할 차례인가 */
     public boolean isDueForDecision(Instant now) {
         return status == SessionStatus.RECRUITING && !now.isBefore(applyDeadline());
     }

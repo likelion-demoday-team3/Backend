@@ -23,17 +23,17 @@ public class SessionNotifications {
 
     private final ApplicationEventPublisher events;
 
-    /** 시작 30분 전 진행 확정 */
+    /** 시작 10분 전 진행 확정 */
     public void confirmed(DatingSession session, List<SessionParticipant> applied) {
         String time = NotificationTexts.sessionTime(session.getStartTime());
         for (SessionParticipant participant : applied) {
             publish(participant, session, NotificationType.SESSION_CONFIRMED, "소개팅이 확정됐어요",
-                    time + " 소개팅이 확정됐어요. 시작 5분 전부터 입장할 수 있고, 시작 시각까지 입장해야 참여할 수 있어요.",
+                    time + " 소개팅이 확정됐어요. 지금부터 입장할 수 있고, 시작 시각까지 입장해야 참여할 수 있어요.",
                     "/session/" + session.getId(), "SESSION_CONFIRMED");
         }
     }
 
-    /** 시작 30분 전 신청 인원 미달 취소. 신청자 전원 환불 */
+    /** 시작 10분 전 신청 인원 미달 취소. 신청자 전원 환불 */
     public void cancelledForLowApplicants(DatingSession session, List<SessionParticipant> applied) {
         String reason = NotificationTexts.sessionTime(session.getStartTime()) + " 소개팅이 신청 인원이 모자라 취소됐어요.";
         for (SessionParticipant participant : applied) {

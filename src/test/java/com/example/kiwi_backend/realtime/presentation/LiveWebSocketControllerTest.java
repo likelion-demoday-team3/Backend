@@ -58,13 +58,13 @@ class LiveWebSocketControllerTest {
 
         when(liveJoinService.join(10L, 101L)).thenReturn(response);
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
-        when(sessionQueryService.getStartTime(10L)).thenReturn(Instant.parse("2026-10-09T12:00:00Z"));
+        when(sessionQueryService.getLobbyOpenAt(10L)).thenReturn(Instant.parse("2026-10-09T11:50:00Z"));
         when(sessionQueryService.getLobbyCloseAt(10L)).thenReturn(Instant.parse("2026-10-09T12:01:00Z"));
 
         controller.join(request, authUser, "ws-1");
 
         verify(lobbyPresenceService).join(10L, 101L, "ws-1",
-                Instant.parse("2026-10-09T11:55:00Z"), Instant.parse("2026-10-09T12:01:00Z"));
+                Instant.parse("2026-10-09T11:50:00Z"), Instant.parse("2026-10-09T12:01:00Z"));
         verify(messagingTemplate).convertAndSendToUser("101", "/queue/live/joined", response);
     }
 
