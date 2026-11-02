@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,15 +96,19 @@ public class LiveRoundBroadcastService {
             compatibilityByRoomId.put(room.getId(), compatibility);
         }
 
+        if (sessionQueryService == null || round.getStartedAt() == null) {
+            throw new IllegalStateException("라운드 종료 시각을 계산할 수 없습니다");
+        }
+        Instant roundEndsAt = round.getStartedAt().plusSeconds(sessionQueryService.getRoundDurationSeconds(sessionId));
         Map<Long, String> aliases = aliasesOf(sessionId, sessionQueryService);
         int recipientCount = 0;
         for (LiveRoom room : rooms) {
             sendAssignment(round, room, room.getMaleMemberId(), room.getFemaleMemberId(),
                     aliases.get(room.getFemaleMemberId()),
-                    cards.get(room.getFemaleMemberId()), compatibilityByRoomId.get(room.getId()));
+                    cards.get(room.getFemaleMemberId()), compatibilityByRoomId.get(room.getId()), roundEndsAt);
             sendAssignment(round, room, room.getFemaleMemberId(), room.getMaleMemberId(),
                     aliases.get(room.getMaleMemberId()),
-                    cards.get(room.getMaleMemberId()), compatibilityByRoomId.get(room.getId()));
+                    cards.get(room.getMaleMemberId()), compatibilityByRoomId.get(room.getId()), roundEndsAt);
             recipientCount += 2;
         }
 
@@ -156,7 +161,7 @@ public class LiveRoundBroadcastService {
 
     private void sendAssignment(LiveRound round, LiveRoom room, Long memberId, Long partnerMemberId,
                                 String partnerAlias,
-                                PartnerProfileCard partnerProfileCard, CompatibilitySummary compatibility) {
+                                PartnerProfileCard partnerProfileCard, CompatibilitySummary compatibility, Instant roundEndsAt) {
         messagingTemplate.convertAndSendToUser(
                 memberId.toString(),
                 ROUND_ASSIGNED_DESTINATION,
@@ -170,7 +175,8 @@ public class LiveRoundBroadcastService {
                         partnerMemberId,
                         partnerAlias,
                         partnerProfileCard,
-                        compatibility
+                        compatibility,
+                        roundEndsAt
                 )
         );
     }

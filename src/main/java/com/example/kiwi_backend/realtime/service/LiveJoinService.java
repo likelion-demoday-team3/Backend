@@ -73,6 +73,7 @@ public class LiveJoinService {
                     null,
                     null,
                     null,
+                    null,
                     null
             );
         }
@@ -91,7 +92,9 @@ public class LiveJoinService {
                 room.getTableNo(),
                 partnerMemberId,
                 findAlias(round.getSessionId(), partnerMemberId),
-                profileQueryService.getCards(List.of(partnerMemberId)).get(partnerMemberId)
+                profileQueryService.getCards(List.of(partnerMemberId)).get(partnerMemberId),
+                round.getStartedAt().plusSeconds(sessionQueryServiceProvider.getIfAvailable()
+                        .getRoundDurationSeconds(round.getSessionId()))
         );
     }
 
@@ -100,6 +103,7 @@ public class LiveJoinService {
                 sessionId,
                 memberId,
                 LiveJoinStatus.JOINED,
+                null,
                 null,
                 null,
                 null,

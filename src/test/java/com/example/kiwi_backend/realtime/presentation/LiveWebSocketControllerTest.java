@@ -52,6 +52,7 @@ class LiveWebSocketControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 

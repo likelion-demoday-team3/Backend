@@ -75,6 +75,7 @@ class LiveRoundBroadcastServiceTest {
         when(compatQueryService.getCompatibility(10L, 102L, 202L))
                 .thenReturn(new CompatibilitySummary(74, "관심사가 겹칩니다"));
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
+        when(sessionQueryService.getRoundDurationSeconds(10L)).thenReturn(180);
         when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
                 new LiveParticipant(101L, Gender.MALE, "졸린 수달"),
                 new LiveParticipant(201L, Gender.FEMALE, "배고픈 판다"),
@@ -115,6 +116,9 @@ class LiveRoundBroadcastServiceTest {
         assertThat(messageCaptor.getAllValues())
                 .extracting(message -> message.compatibility().score())
                 .containsExactly(82, 82, 74, 74);
+        assertThat(messageCaptor.getAllValues())
+                .extracting(LiveRoundAssignmentMessage::roundEndsAt)
+                .containsOnly(round.getStartedAt().plusSeconds(180));
     }
 
     @Test
@@ -126,6 +130,7 @@ class LiveRoundBroadcastServiceTest {
         when(profileQueryService.getCards(Set.of(101L, 201L))).thenReturn(Map.of(
                 101L, card(101L), 201L, card(201L)));
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
+        when(sessionQueryService.getRoundDurationSeconds(10L)).thenReturn(180);
         when(sessionQueryService.isCallTestSession(10L)).thenReturn(true);
         when(compatQueryServiceProvider.getIfAvailable()).thenReturn(compatQueryService);
         when(compatQueryService.getCompatibility(10L, 101L, 201L))

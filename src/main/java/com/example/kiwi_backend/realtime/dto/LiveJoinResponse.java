@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.realtime.dto;
 
 import com.example.kiwi_backend.contract.dto.PartnerProfileCard;
+import java.time.Instant;
 
 /**
  * 라이브 입장(재접속 포함) 응답.
@@ -16,6 +17,7 @@ public record LiveJoinResponse(
         Integer tableNo,
         Long partnerMemberId,
         String partnerAlias,
-        PartnerProfileCard partnerProfileCard
+        PartnerProfileCard partnerProfileCard,
+        Instant roundEndsAt
 ) {
 }

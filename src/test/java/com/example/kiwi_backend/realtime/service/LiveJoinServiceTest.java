@@ -50,6 +50,7 @@ class LiveJoinServiceTest {
     private void allowParticipant(Long memberId) {
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
         when(sessionQueryService.isParticipant(10L, memberId)).thenReturn(true);
+        when(sessionQueryService.getRoundDurationSeconds(10L)).thenReturn(180);
     }
 
     @Test
@@ -100,6 +101,7 @@ class LiveJoinServiceTest {
         // 재접속해도 상대 별칭과 프로필 카드를 다시 받는다
         assertThat(response.partnerAlias()).isEqualTo("배고픈 판다");
         assertThat(response.partnerProfileCard()).isEqualTo(partnerCard);
+        assertThat(response.roundEndsAt()).isEqualTo(round.getStartedAt().plusSeconds(180));
     }
 
     @Test

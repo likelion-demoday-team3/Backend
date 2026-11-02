@@ -59,8 +59,9 @@ public class LiveRoundSchedulerService {
             }
         });
         try {
-            liveRoundStateService.startRound(sessionId, firstRoundNumber, Instant.now());
-            LiveAfterCommit.run(() -> scheduleRoundEnd(sessionId, firstRoundNumber, roundDurationSeconds));
+            Instant startedAt = Instant.now();
+            liveRoundStateService.startRound(sessionId, firstRoundNumber, startedAt);
+            LiveAfterCommit.run(() -> scheduleRoundEnd(sessionId, firstRoundNumber, startedAt, roundDurationSeconds));
         } catch (RuntimeException e) {
             runningSessionIds.remove(sessionId);
             throw e;
@@ -70,14 +71,15 @@ public class LiveRoundSchedulerService {
     }
 
     private void startRoundAndScheduleEnd(Long sessionId, int roundNumber, int roundDurationSeconds) {
-        liveRoundStateService.startRound(sessionId, roundNumber, Instant.now());
-        scheduleRoundEnd(sessionId, roundNumber, roundDurationSeconds);
+        Instant startedAt = Instant.now();
+        liveRoundStateService.startRound(sessionId, roundNumber, startedAt);
+        scheduleRoundEnd(sessionId, roundNumber, startedAt, roundDurationSeconds);
     }
 
-    private void scheduleRoundEnd(Long sessionId, int roundNumber, int roundDurationSeconds) {
+    private void scheduleRoundEnd(Long sessionId, int roundNumber, Instant startedAt, int roundDurationSeconds) {
         taskScheduler.schedule(
                 () -> completeRoundAndScheduleNext(sessionId, roundNumber, roundDurationSeconds),
-                Instant.now().plusSeconds(roundDurationSeconds)
+                startedAt.plusSeconds(roundDurationSeconds)
         );
     }
 
