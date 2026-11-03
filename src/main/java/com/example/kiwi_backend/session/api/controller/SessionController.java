@@ -6,9 +6,11 @@ import com.example.kiwi_backend.session.api.dto.*;
 import com.example.kiwi_backend.session.application.service.SessionApplicationService;
 import com.example.kiwi_backend.session.application.service.SessionReadService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 
 /** 회원용 세션 API */
@@ -26,10 +28,16 @@ public class SessionController {
         return ApiResponse.ok(sessionReadService.listUpcoming(authUser.memberId()));
     }
 
-    /** 내가 신청했던 세션들 */
+    /**
+     * 내가 신청했던 세션들. from·to(ISO-8601, 예: 2026-05-03T00:00:00Z)를 주면
+     * 세션 시작 시각이 그 사이(양 끝 포함)인 것만 준다. 생략한 쪽은 제한 없음.
+     */
     @GetMapping("/my")
-    public ApiResponse<List<MySessionResponse>> mySessions(@AuthenticationPrincipal AuthUser authUser) {
-        return ApiResponse.ok(sessionReadService.mySessions(authUser.memberId()));
+    public ApiResponse<List<MySessionResponse>> mySessions(
+            @AuthenticationPrincipal AuthUser authUser,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+        return ApiResponse.ok(sessionReadService.mySessions(authUser.memberId(), from, to));
     }
 
     /** 세션 상세 (내 신청 상태 포함) */
