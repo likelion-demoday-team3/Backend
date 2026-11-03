@@ -54,7 +54,7 @@ class LiveRoundStateServiceTest {
         TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
 
         verify(liveRoundBroadcastService).broadcastRoundAssignments(10L, 1);
-        verify(liveRoundBroadcastService).broadcastIdle(10L, 1, 60);
+        verify(liveRoundBroadcastService).broadcastIdle(10L, 1, 0); // [휴식 제거] 60 → 0
     }
 
     @Test
@@ -95,8 +95,9 @@ class LiveRoundStateServiceTest {
         assertThat(nextRound.getStatus()).isEqualTo(LiveRoundStatus.PENDING);
         assertThat(result.nextRoundExists()).isTrue();
         assertThat(result.nextRoundNumber()).isEqualTo(2);
-        assertThat(result.phase()).isEqualTo(LiveRoundPhase.BREAK);
-        assertThat(result.breakSeconds()).isEqualTo(60);
+        // [휴식 제거] BREAK·60초 → 바로 다음 라운드(ROUND)·0초
+        assertThat(result.phase()).isEqualTo(LiveRoundPhase.ROUND);
+        assertThat(result.breakSeconds()).isZero();
 
         verify(liveRoundBroadcastService, never()).broadcastRoundAssignments(10L, 2);
     }

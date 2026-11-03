@@ -12,7 +12,10 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class LiveRoundStateService {
 
-    private static final int DEFAULT_BREAK_SECONDS = 60;
+    // [휴식 제거] 라운드 사이 휴식(60초)을 없애고 이전 라운드가 끝나면 바로 다음 라운드를 시작한다.
+    // 되살리려면 아래 주석을 풀고 BREAK_SECONDS 대신 DEFAULT_BREAK_SECONDS를 쓴다.
+    // private static final int DEFAULT_BREAK_SECONDS = 60;
+    private static final int BREAK_SECONDS = 0;
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoundBroadcastService liveRoundBroadcastService;
@@ -22,7 +25,7 @@ public class LiveRoundStateService {
         LiveRound round = findRound(sessionId, roundNumber);
         round.start(startedAt);
         LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastRoundAssignments(sessionId, roundNumber));
-        LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastIdle(sessionId, roundNumber, DEFAULT_BREAK_SECONDS));
+        LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastIdle(sessionId, roundNumber, BREAK_SECONDS));
 
         return new LiveRoundStateResult(sessionId, roundNumber, round.getStatus(), true);
     }
@@ -51,8 +54,10 @@ public class LiveRoundStateService {
                     currentRoundNumber,
                     true,
                     nextRoundNumber,
-                    LiveRoundPhase.BREAK,
-                    DEFAULT_BREAK_SECONDS
+                    // [휴식 제거] LiveRoundPhase.BREAK,
+                    // [휴식 제거] DEFAULT_BREAK_SECONDS
+                    LiveRoundPhase.ROUND,
+                    BREAK_SECONDS
             );
         }
         return new LiveRoundAdvanceResult(

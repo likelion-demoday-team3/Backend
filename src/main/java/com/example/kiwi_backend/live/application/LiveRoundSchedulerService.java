@@ -101,6 +101,7 @@ public class LiveRoundSchedulerService {
         }
     }
 
+    // [휴식 제거] breakSeconds가 0이라 다음 라운드는 이전 라운드가 끝난 즉시 시작된다.
     private void scheduleNextRoundStart(Long sessionId, int nextRoundNumber, int breakSeconds, int roundDurationSeconds) {
         taskScheduler.schedule(
                 () -> startRoundAndScheduleEnd(sessionId, nextRoundNumber, roundDurationSeconds),
