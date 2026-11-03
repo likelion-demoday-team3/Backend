@@ -211,7 +211,8 @@ public class DatingSession extends BaseTimeEntity {
             throw new IllegalStateException("라운드가 끝난 뒤에만 투표를 시작할 수 있습니다");
         }
         this.liveStatus = LiveStatus.VOTING;
-        this.phaseEndsAt = startedAt.plusSeconds(120);
+        // 관리자가 세션을 만들 때 정한 투표 시간
+        this.phaseEndsAt = startedAt.plusSeconds(votingDurationSeconds);
         return phaseEndsAt;
     }
 
