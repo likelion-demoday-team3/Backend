@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,17 @@ public class SessionReadService {
     }
 
     public List<MySessionResponse> mySessions(Long memberId) {
+        return mySessions(memberId, null, null);
+    }
+
+    /**
+     * 내가 신청했던 세션 중 세션 시작 시각이 [from, to] 안에 있는 것 (양 끝 포함).
+     * from·to가 null이면 그쪽은 제한하지 않는다.
+     */
+    public List<MySessionResponse> mySessions(Long memberId, Instant from, Instant to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("조회 시작일은 종료일보다 늦을 수 없습니다");
+        }
         List<SessionParticipant> participations = participantRepository.findAllByMemberIdOrderByAppliedAtDesc(memberId);
         Map<Long, DatingSession> sessions = sessionRepository
                 .findAllById(participations.stream().map(SessionParticipant::getSessionId).toList())
@@ -70,12 +82,17 @@ public class SessionReadService {
 
         return participations.stream()
                 .filter(p -> sessions.containsKey(p.getSessionId()))
+                .filter(p -> isWithin(sessions.get(p.getSessionId()).getStartTime(), from, to))
                 .map(p -> {
                     DatingSession s = sessions.get(p.getSessionId());
                     return new MySessionResponse(s.getId(), s.getStartTime(), s.getStatus(),
                             p.getStatus(), p.getAlias(), p.getAppliedAt());
                 })
                 .toList();
+    }
+
+    private static boolean isWithin(Instant time, Instant from, Instant to) {
+        return (from == null || !time.isBefore(from)) && (to == null || !time.isAfter(to));
     }
 
     /** 세션마다 따로 세지 않고 한 번의 쿼리로 성별 신청 인원을 센다 */
