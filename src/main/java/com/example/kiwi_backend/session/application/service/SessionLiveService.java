@@ -123,6 +123,14 @@ public class SessionLiveService implements SessionAttendanceCommand, SessionLive
 
     @Override
     @Transactional
+    public void markRoundInProgress(Long sessionId, int roundNumber) {
+        DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));
+        session.markRoundInProgress(roundNumber);
+    }
+
+    @Override
+    @Transactional
     public Instant startVoting(Long sessionId, Instant startedAt) {
         DatingSession session = sessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다"));

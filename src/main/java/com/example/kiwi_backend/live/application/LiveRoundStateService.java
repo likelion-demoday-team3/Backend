@@ -1,5 +1,6 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.command.SessionLiveStatusCommand;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,11 +20,14 @@ public class LiveRoundStateService {
 
     private final LiveRoundRepository liveRoundRepository;
     private final LiveRoundBroadcastService liveRoundBroadcastService;
+    private final SessionLiveStatusCommand sessionLiveStatusCommand;
 
     @Transactional
     public LiveRoundStateResult startRound(Long sessionId, int roundNumber, Instant startedAt) {
         LiveRound round = findRound(sessionId, roundNumber);
         round.start(startedAt);
+        // 세션 상세의 currentRoundNumber를 함께 갱신해 새로고침·재입장 때 라운드 번호를 되살린다
+        sessionLiveStatusCommand.markRoundInProgress(sessionId, roundNumber);
         LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastRoundAssignments(sessionId, roundNumber));
         LiveAfterCommit.run(() -> liveRoundBroadcastService.broadcastIdle(sessionId, roundNumber, BREAK_SECONDS));
 

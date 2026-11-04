@@ -1,5 +1,6 @@
 package com.example.kiwi_backend.live.application;
 
+import com.example.kiwi_backend.contract.command.SessionLiveStatusCommand;
 import com.example.kiwi_backend.live.domain.entity.LiveRound;
 import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
@@ -29,10 +30,12 @@ class LiveRoundStateServiceTest {
 
     private final LiveRoundRepository liveRoundRepository = mock(LiveRoundRepository.class);
     private final LiveRoundBroadcastService liveRoundBroadcastService = mock(LiveRoundBroadcastService.class);
+    private final SessionLiveStatusCommand sessionLiveStatusCommand = mock(SessionLiveStatusCommand.class);
 
     private final LiveRoundStateService service = new LiveRoundStateService(
             liveRoundRepository,
-            liveRoundBroadcastService
+            liveRoundBroadcastService,
+            sessionLiveStatusCommand
     );
 
     @Test
@@ -49,6 +52,8 @@ class LiveRoundStateServiceTest {
         assertThat(round.getStartedAt()).isEqualTo(startedAt);
         assertThat(result.status()).isEqualTo(LiveRoundStatus.IN_PROGRESS);
         assertThat(result.assignmentBroadcasted()).isTrue();
+        // 세션 상세의 currentRoundNumber도 함께 갱신한다
+        verify(sessionLiveStatusCommand).markRoundInProgress(10L, 1);
 
         org.mockito.Mockito.verifyNoInteractions(liveRoundBroadcastService);
         TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);

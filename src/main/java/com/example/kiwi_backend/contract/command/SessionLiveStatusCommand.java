@@ -10,4 +10,10 @@ public interface SessionLiveStatusCommand {
      * 예정 시각 전이나 이미 시작된 세션은 거절한다.
      */
     void markRoundsStarted(Long sessionId);
+
+    /**
+     * 라운드가 시작될 때 호출해 세션의 현재 라운드 번호를 기록한다 (세션 상세 currentRoundNumber).
+     * 새로고침·재입장 때 화면이 몇 번째 라운드인지 되살리는 데 쓴다. 더 작은 번호로는 되돌리지 않는다.
+     */
+    void markRoundInProgress(Long sessionId, int roundNumber);
 }

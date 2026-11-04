@@ -194,6 +194,18 @@ public class DatingSession extends BaseTimeEntity {
     }
 
     /**
+     * 라운드 시작을 기록. 같은 라운드나 앞 라운드로 다시 불려도 번호를 되돌리지 않는다 (두 번 불려도 안전).
+     */
+    public void markRoundInProgress(int roundNumber) {
+        if (roundNumber < 1) {
+            throw new IllegalArgumentException("라운드 번호는 1 이상이어야 합니다");
+        }
+        if (roundNumber > currentRoundNumber) {
+            this.currentRoundNumber = roundNumber;
+        }
+    }
+
+    /**
      * 마지막 라운드가 끝나서 투표 시작. 투표 마감 시각을 기록하고 돌려준다.
      * 이미 투표 중이면 처음 정한 마감 시각을 그대로 돌려준다 (A의 타이머가 두 번 불러도 안전).
      */
