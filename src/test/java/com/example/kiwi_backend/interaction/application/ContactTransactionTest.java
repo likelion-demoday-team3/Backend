@@ -6,6 +6,10 @@ import com.example.kiwi_backend.notification.application.NotificationService;
 import com.example.kiwi_backend.contract.dto.*;
 import com.example.kiwi_backend.contract.query.MemberContactQuery;
 import com.example.kiwi_backend.interaction.domain.*;
+import com.example.kiwi_backend.live.domain.entity.LiveRoom;
+import com.example.kiwi_backend.live.domain.entity.LiveRound;
+import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
+import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
 import com.example.kiwi_backend.session.domain.entity.*;
 import com.example.kiwi_backend.session.domain.repository.*;
 import com.example.kiwi_backend.wallet.application.service.WalletService;
@@ -36,6 +40,8 @@ class ContactTransactionTest {
     @Autowired ApplicationEventPublisher events;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired NotificationService notifications;
+    @Autowired LiveRoundRepository rounds;
+    @Autowired LiveRoomRepository rooms;
     @MockitoBean MemberContactQuery contactQuery;
     private Long sessionId;
     private long sender;
@@ -52,10 +58,33 @@ class ContactTransactionTest {
         sessionId = sessions.saveAndFlush(session).getId();
         sender = 70000 + sessionId * 10;
         target = sender + 1;
-        for (long id : List.of(sender, target, sender + 2)) {
+        for (long id : List.of(sender, target, sender + 2, sender + 3)) {
             var p = SessionParticipant.apply(sessionId, id, id == sender ? Gender.MALE : Gender.FEMALE, "alias-" + id, now);
             p.attend(); participants.saveAndFlush(p); wallet.createWallet(id);
         }
+        // 연락처는 대화한 상대와만 주고받는다. sender는 target·sender+2와 대화했고 sender+3과는 대화하지 않았다
+        for (long partner : List.of(target, sender + 2)) {
+            var round = LiveRound.create(sessionId, (int) (partner - sender));
+            round.start(now.minusSeconds(900));
+            round.complete(now.minusSeconds(720));
+            rooms.saveAndFlush(LiveRoom.create(rounds.saveAndFlush(round), 1, sender, partner));
+        }
+    }
+
+    @Test
+    void sendAndRequestRejectPartnerWhoNeverSharedARoom() {
+        windows.closeResults(sessionId, sender);
+        wallet.apply(GemCommand.adminGrant(sender, 1, "test", UUID.randomUUID().toString()));
+        long stranger = sender + 3;
+
+        assertThatThrownBy(() -> service.send(sessionId, sender, stranger, ContactType.PHONE))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.request(sessionId, sender, stranger, ContactType.PHONE))
+                .isInstanceOf(IllegalArgumentException.class);
+        // 보석도 차감되지 않고 아무것도 남지 않는다
+        assertThat(wallet.getBalance(sender).gemBalance()).isEqualTo(1);
+        assertThat(shares.findBySessionIdAndSenderIdAndReceiverId(sessionId, sender, stranger)).isEmpty();
+        assertThat(requests.findBySessionIdAndRequesterIdAndTargetId(sessionId, sender, stranger)).isEmpty();
     }
 
     @Test

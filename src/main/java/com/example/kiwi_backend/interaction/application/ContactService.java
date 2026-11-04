@@ -31,6 +31,7 @@ public class ContactService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
     private final SessionQueryService sessionQueries;
+    private final LiveEncounterQuery encounters;
 
     @Transactional
     public ShareView send(Long sessionId, Long sender, Long receiver, ContactType type) {
@@ -120,6 +121,9 @@ public class ContactService {
     private void requirePair(Long sessionId, Long sender, Long receiver) {
         var context = access.lock(sessionId);
         context.requireOppositePair(sender, receiver);
+        // 연락처 보내기·요청은 실제로 같은 방에서 대화한 상대에게만 할 수 있다
+        if (!encounters.haveMet(sessionId, sender, receiver))
+            throw new IllegalArgumentException("대화한 상대와만 연락처를 주고받을 수 있어요");
         if (context.phase() != LiveSessionContext.Phase.RESULT_AND_SHARE) throw new IllegalStateException("Contacts open after results only");
         if (matches.matchedPartner(sessionId, sender).filter(receiver::equals).isPresent())
             throw new IllegalStateException("Matched contacts are provided free");
