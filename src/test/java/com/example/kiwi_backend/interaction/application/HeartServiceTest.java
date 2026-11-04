@@ -2,6 +2,7 @@ package com.example.kiwi_backend.interaction.application;
 
 import com.example.kiwi_backend.contract.command.*;
 import com.example.kiwi_backend.contract.dto.*;
+import com.example.kiwi_backend.contract.query.LiveEncounterQuery;
 import com.example.kiwi_backend.interaction.domain.*;
 import org.junit.jupiter.api.*;
 import org.mockito.ArgumentCaptor;
@@ -17,9 +18,10 @@ class HeartServiceTest {
     private final HeartRepository hearts = mock(HeartRepository.class);
     private final GemWallet wallet = mock(GemWallet.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+    private final LiveEncounterQuery encounters = mock(LiveEncounterQuery.class);
     private final Instant now = Instant.parse("2026-10-13T12:00:00Z");
     private final HeartService service = new HeartService(access, hearts, wallet,
-            Clock.fixed(now, ZoneOffset.UTC), events);
+            Clock.fixed(now, ZoneOffset.UTC), events, encounters);
     private final List<LiveParticipant> people = List.of(new LiveParticipant(1L, Gender.MALE, "a"),
             new LiveParticipant(2L, Gender.FEMALE, "b"), new LiveParticipant(3L, Gender.FEMALE, "c"),
             new LiveParticipant(4L, Gender.MALE, "d"));
@@ -28,6 +30,7 @@ class HeartServiceTest {
     void setup() {
         when(access.lock(10L)).thenReturn(new LiveSessionContext(10L, LiveSessionContext.Phase.HEART,
                 now.plusSeconds(1), 2, people));
+        when(encounters.haveMet(anyLong(), anyLong(), anyLong())).thenReturn(true);
     }
 
     @Test
@@ -93,5 +96,14 @@ class HeartServiceTest {
         assertThatThrownBy(() -> service.send(10L, 1L, 4L)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.send(10L, 1L, 999L)).isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(wallet, events);
+    }
+
+    @Test
+    void rejectsPartnerWhoNeverSharedARoom() {
+        // 이성 참가자라도 같은 방에서 대화한 적이 없으면 하트를 보낼 수 없다
+        when(encounters.haveMet(10L, 1L, 3L)).thenReturn(false);
+        assertThatThrownBy(() -> service.send(10L, 1L, 3L)).isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(wallet, events);
+        verify(hearts, never()).saveAndFlush(any());
     }
 }

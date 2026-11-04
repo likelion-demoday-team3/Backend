@@ -38,4 +38,19 @@ public interface LiveRoomRepository extends JpaRepository<LiveRoom, Long> {
     List<LiveRoom> findAllBySessionIdAndMemberIdAndRoundStatusIn(@Param("sessionId") Long sessionId,
                                                                  @Param("memberId") Long memberId,
                                                                  @Param("statuses") Collection<LiveRoundStatus> statuses);
+
+    /** 두 회원이 세션에서 같은 방에 배정된 적이 있는가 (주어진 상태의 라운드만) */
+    @Query("""
+            select count(room) > 0
+            from LiveRoom room
+              join room.round round
+            where round.sessionId = :sessionId
+              and round.status in :statuses
+              and ((room.maleMemberId = :memberId and room.femaleMemberId = :otherMemberId)
+                or (room.maleMemberId = :otherMemberId and room.femaleMemberId = :memberId))
+            """)
+    boolean existsMetPair(@Param("sessionId") Long sessionId,
+                          @Param("memberId") Long memberId,
+                          @Param("otherMemberId") Long otherMemberId,
+                          @Param("statuses") Collection<LiveRoundStatus> statuses);
 }

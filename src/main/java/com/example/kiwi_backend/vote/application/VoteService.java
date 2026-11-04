@@ -5,6 +5,7 @@ import com.example.kiwi_backend.common.notification.NotificationType;
 import com.example.kiwi_backend.common.realtime.UserMessageEvent;
 import com.example.kiwi_backend.contract.command.*;
 import com.example.kiwi_backend.contract.dto.*;
+import com.example.kiwi_backend.contract.query.LiveEncounterQuery;
 import com.example.kiwi_backend.vote.domain.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +25,7 @@ public class VoteService {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final ResultWindowAccess resultWindow;
+    private final LiveEncounterQuery encounters;
 
     @Transactional
     public Submission submit(Long sessionId, Long memberId, List<Long> targets) {
@@ -34,6 +36,10 @@ public class VoteService {
             throw new IllegalArgumentException("Choose zero to three distinct participants");
         }
         targets.forEach(target -> context.requireOppositePair(memberId, target));
+        // 투표는 실제로 같은 방에서 대화한 상대만 고를 수 있다
+        if (targets.stream().anyMatch(target -> !encounters.haveMet(sessionId, memberId, target))) {
+            throw new IllegalArgumentException("대화한 상대에게만 투표할 수 있어요");
+        }
         if (access.hasVoted(sessionId, memberId)) {
             var saved = ownTargets(sessionId, memberId);
             if (!saved.equals(targets)) throw new IllegalStateException("Submitted votes cannot be changed");

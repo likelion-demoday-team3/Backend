@@ -3,6 +3,7 @@ package com.example.kiwi_backend.interaction.application;
 import com.example.kiwi_backend.common.realtime.UserMessageEvent;
 import com.example.kiwi_backend.contract.command.*;
 import com.example.kiwi_backend.contract.dto.*;
+import com.example.kiwi_backend.contract.query.LiveEncounterQuery;
 import com.example.kiwi_backend.interaction.domain.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -19,11 +20,16 @@ public class HeartService {
     private final GemWallet wallet;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final LiveEncounterQuery encounters;
 
     @Transactional
     public Receipt send(Long sessionId, Long senderId, Long receiverId) {
         var context = access.lock(sessionId);
         context.requireOppositePair(senderId, receiverId);
+        // 하트는 실제로 같은 방에서 대화한 상대에게만 보낼 수 있다
+        if (!encounters.haveMet(sessionId, senderId, receiverId)) {
+            throw new IllegalArgumentException("대화한 상대에게만 하트를 보낼 수 있어요");
+        }
         var existing = hearts.findBySessionIdAndSenderIdAndReceiverId(sessionId, senderId, receiverId);
         if (existing.isPresent()) return new Receipt(receiverId, existing.get().getChargedGem(), true);
         if (context.phase() != LiveSessionContext.Phase.HEART || context.deadline() == null
