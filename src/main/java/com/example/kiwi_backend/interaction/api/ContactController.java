@@ -16,11 +16,19 @@ public class ContactController {
     private final ContactService contacts;
     private final PostSessionWindowService windows;
     private final LiveSessionStateService liveState;
+    private final SessionPartnerService sessionPartners;
 
     @GetMapping("/sessions/{sessionId}/live/state")
     public ApiResponse<LiveSessionStateService.State> liveState(@PathVariable Long sessionId,
             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.ok(liveState.get(sessionId, user.memberId()));
+    }
+
+    /** 이 세션에서 내가 대화한 상대 목록 (연락처 화면용) */
+    @GetMapping("/sessions/{sessionId}/partners")
+    public ApiResponse<SessionPartnerService.Partners> partners(@PathVariable Long sessionId,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.ok(sessionPartners.partners(sessionId, user.memberId()));
     }
 
     @PostMapping("/sessions/{sessionId}/contacts/send")

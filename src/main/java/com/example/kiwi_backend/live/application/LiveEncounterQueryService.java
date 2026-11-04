@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.live.application;
 
 import com.example.kiwi_backend.contract.query.LiveEncounterQuery;
+import com.example.kiwi_backend.live.domain.entity.LiveRoom;
 import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,5 +27,20 @@ public class LiveEncounterQueryService implements LiveEncounterQuery {
             return false;
         }
         return liveRoomRepository.existsMetPair(sessionId, memberId, otherMemberId, MET_ROUND_STATUSES);
+    }
+
+    @Override
+    public List<Encounter> encounters(Long sessionId, Long memberId) {
+        if (sessionId == null || memberId == null) {
+            return List.of();
+        }
+        return liveRoomRepository.findAllBySessionIdAndMemberIdAndRoundStatusIn(sessionId, memberId, MET_ROUND_STATUSES)
+                .stream()
+                .map(room -> new Encounter(partnerOf(room, memberId), room.getRound().getRoundNumber()))
+                .toList();
+    }
+
+    private Long partnerOf(LiveRoom room, Long memberId) {
+        return memberId.equals(room.getMaleMemberId()) ? room.getFemaleMemberId() : room.getMaleMemberId();
     }
 }

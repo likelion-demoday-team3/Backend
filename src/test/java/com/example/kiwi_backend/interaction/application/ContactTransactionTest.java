@@ -42,6 +42,7 @@ class ContactTransactionTest {
     @Autowired NotificationService notifications;
     @Autowired LiveRoundRepository rounds;
     @Autowired LiveRoomRepository rooms;
+    @Autowired SessionPartnerService sessionPartners;
     @MockitoBean MemberContactQuery contactQuery;
     private Long sessionId;
     private long sender;
@@ -69,6 +70,23 @@ class ContactTransactionTest {
             round.complete(now.minusSeconds(720));
             rooms.saveAndFlush(LiveRoom.create(rounds.saveAndFlush(round), 1, sender, partner));
         }
+    }
+
+    @Test
+    void partnersListsOnlyPeopleIActuallyTalkedWithInRoundOrder() {
+        // 브라우저를 닫았다 다시 와도 연락처 화면이 서버에서 상대 목록과 내 memberId를 받는다
+        var mine = sessionPartners.partners(sessionId, sender);
+        assertThat(mine.myMemberId()).isEqualTo(sender);
+        assertThat(mine.partners()).containsExactly(
+                new SessionPartnerService.Partner(target, "alias-" + target, 1),
+                new SessionPartnerService.Partner(sender + 2, "alias-" + (sender + 2), 2));
+        // 상대 쪽에서 봐도 대화한 사람만 나온다
+        assertThat(sessionPartners.partners(sessionId, target).partners())
+                .containsExactly(new SessionPartnerService.Partner(sender, "alias-" + sender, 1));
+        assertThat(sessionPartners.partners(sessionId, sender + 3).partners()).isEmpty();
+        // 참가자가 아니면 볼 수 없다
+        assertThatThrownBy(() -> sessionPartners.partners(sessionId, 999_999L))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
