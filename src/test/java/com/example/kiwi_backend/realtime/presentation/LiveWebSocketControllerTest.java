@@ -15,6 +15,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -53,7 +54,8 @@ class LiveWebSocketControllerTest {
                 null,
                 null,
                 null,
-                null
+                null,
+                List.of()
         );
 
         when(liveJoinService.join(10L, 101L)).thenReturn(response);

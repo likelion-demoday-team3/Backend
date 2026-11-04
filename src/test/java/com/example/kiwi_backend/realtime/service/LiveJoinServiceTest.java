@@ -11,6 +11,7 @@ import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import com.example.kiwi_backend.live.domain.repository.LiveRoomRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundIdleParticipantRepository;
 import com.example.kiwi_backend.live.domain.repository.LiveRoundRepository;
+import com.example.kiwi_backend.realtime.dto.LiveJoinPartner;
 import com.example.kiwi_backend.realtime.dto.LiveJoinResponse;
 import com.example.kiwi_backend.realtime.dto.LiveJoinStatus;
 import org.junit.jupiter.api.Test;
@@ -128,6 +129,61 @@ class LiveJoinServiceTest {
     }
 
     @Test
+    void joinReturnsPartnersFromStartedRoundsInOrder() {
+        allowParticipant(101L);
+        LiveRound first = completedRound(10L, 1L, 1);
+        LiveRound second = startedRound(10L, 2L, 2);
+        LiveRoom firstRoom = persistedRoom(100L, first, 1, 101L, 201L);
+        LiveRoom secondRoom = persistedRoom(101L, second, 3, 101L, 202L);
+
+        when(liveRoundRepository.findFirstBySessionIdAndStatusOrderByRoundNumberAsc(
+                10L,
+                LiveRoundStatus.IN_PROGRESS
+        )).thenReturn(Optional.of(second));
+        when(liveRoomRepository.findByRoundIdAndMemberId(2L, 101L))
+                .thenReturn(Optional.of(secondRoom));
+        when(liveRoomRepository.findAllBySessionIdAndMemberIdAndRoundStatusIn(
+                10L, 101L, List.of(LiveRoundStatus.IN_PROGRESS, LiveRoundStatus.COMPLETED)))
+                .thenReturn(List.of(firstRoom, secondRoom));
+        when(sessionQueryService.getLiveParticipants(10L)).thenReturn(List.of(
+                new LiveParticipant(101L, Gender.MALE, "졸린 수달"),
+                new LiveParticipant(201L, Gender.FEMALE, "배고픈 판다"),
+                new LiveParticipant(202L, Gender.FEMALE, "느린 거북")
+        ));
+        when(profileQueryService.getCards(List.of(202L))).thenReturn(Map.of());
+
+        LiveJoinResponse response = service.join(10L, 101L);
+
+        // 새로고침·기기 변경 후에도 앞 라운드 상대까지 하트·투표 후보로 되살릴 수 있어야 한다
+        assertThat(response.partners()).containsExactly(
+                new LiveJoinPartner(201L, "배고픈 판다", 1),
+                new LiveJoinPartner(202L, "느린 거북", 2)
+        );
+        assertThat(response.partnerAlias()).isEqualTo("느린 거북");
+    }
+
+    @Test
+    void joinReturnsPartnersEvenWhenNoRoundIsInProgress() {
+        allowParticipant(201L);
+        LiveRound first = completedRound(10L, 1L, 1);
+        LiveRoom firstRoom = persistedRoom(100L, first, 1, 101L, 201L);
+
+        when(liveRoundRepository.findFirstBySessionIdAndStatusOrderByRoundNumberAsc(
+                10L,
+                LiveRoundStatus.IN_PROGRESS
+        )).thenReturn(Optional.empty());
+        when(liveRoomRepository.findAllBySessionIdAndMemberIdAndRoundStatusIn(
+                10L, 201L, List.of(LiveRoundStatus.IN_PROGRESS, LiveRoundStatus.COMPLETED)))
+                .thenReturn(List.of(firstRoom));
+
+        LiveJoinResponse response = service.join(10L, 201L);
+
+        // 하트·투표 단계 재입장(JOINED)에도 상대 목록을 돌려주고, 별칭을 못 찾으면 null로 둔다
+        assertThat(response.status()).isEqualTo(LiveJoinStatus.JOINED);
+        assertThat(response.partners()).containsExactly(new LiveJoinPartner(101L, null, 1));
+    }
+
+    @Test
     void joinRejectsSomeoneWhoDidNotApply() {
         when(sessionQueryServiceProvider.getIfAvailable()).thenReturn(sessionQueryService);
 
@@ -141,6 +197,12 @@ class LiveJoinServiceTest {
         LiveRound round = LiveRound.create(sessionId, roundNumber);
         ReflectionTestUtils.setField(round, "id", roundId);
         round.start(Instant.parse("2026-10-07T09:00:00Z"));
+        return round;
+    }
+
+    private LiveRound completedRound(Long sessionId, Long roundId, int roundNumber) {
+        LiveRound round = startedRound(sessionId, roundId, roundNumber);
+        round.complete(Instant.parse("2026-10-07T09:03:00Z"));
         return round;
     }
 

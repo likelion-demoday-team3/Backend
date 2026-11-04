@@ -1,10 +1,12 @@
 package com.example.kiwi_backend.live.domain.repository;
 
 import com.example.kiwi_backend.live.domain.entity.LiveRoom;
+import com.example.kiwi_backend.live.domain.enumerated.LiveRoundStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,4 +24,18 @@ public interface LiveRoomRepository extends JpaRepository<LiveRoom, Long> {
             """)
     Optional<LiveRoom> findByRoundIdAndMemberId(@Param("roundId") Long roundId,
                                                 @Param("memberId") Long memberId);
+
+    /** 이 회원이 세션에서 들어갔던 방들 (주어진 상태의 라운드만, 라운드 순) */
+    @Query("""
+            select room
+            from LiveRoom room
+              join fetch room.round round
+            where round.sessionId = :sessionId
+              and round.status in :statuses
+              and (room.maleMemberId = :memberId or room.femaleMemberId = :memberId)
+            order by round.roundNumber asc
+            """)
+    List<LiveRoom> findAllBySessionIdAndMemberIdAndRoundStatusIn(@Param("sessionId") Long sessionId,
+                                                                 @Param("memberId") Long memberId,
+                                                                 @Param("statuses") Collection<LiveRoundStatus> statuses);
 }
