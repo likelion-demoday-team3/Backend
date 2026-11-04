@@ -20,6 +20,8 @@ public enum NotificationType {
     // ===== 결과·보상 =====
     /** 투표를 완료해 보증금(참가비 일부)을 돌려받음 */
     COMPLETION_REFUND,
+    /** 이벤트 기간에 가입해 가입 축하 보석을 받음 */
+    SIGNUP_BONUS,
 
     // ===== 연락처 교환 =====
     CONTACT_REQUESTED,

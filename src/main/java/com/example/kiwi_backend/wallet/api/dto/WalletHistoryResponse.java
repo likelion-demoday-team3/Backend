@@ -47,6 +47,7 @@ public record WalletHistoryResponse(
             case GEM_PURCHASE -> "보석 구매";
             case PURCHASE_REFUND -> "구매 환불";
             case ADMIN_GRANT -> "운영자 지급";
+            case SIGNUP_BONUS -> "가입 축하 보석";
             case ADMIN_DEDUCT -> "운영자 회수";
         };
     }

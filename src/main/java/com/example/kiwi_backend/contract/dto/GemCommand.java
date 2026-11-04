@@ -94,6 +94,12 @@ public record GemCommand(
                 "ADMIN_GRANT:" + requestId);
     }
 
+    /** 가입 축하 보석. 회원당 한 번 */
+    public static GemCommand signupBonus(Long memberId, int amount, String memo) {
+        return new GemCommand(memberId, GemTransactionType.SIGNUP_BONUS, amount, null, null, memo,
+                "SIGNUP_BONUS:m" + memberId);
+    }
+
     /** 운영자 회수 */
     public static GemCommand adminDeduct(Long memberId, int amount, String memo, String requestId) {
         return new GemCommand(memberId, GemTransactionType.ADMIN_DEDUCT, amount, null, null, memo,

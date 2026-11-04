@@ -1,13 +1,14 @@
 package com.example.kiwi_backend.wallet.application.listener;
 
 import com.example.kiwi_backend.contract.event.MemberRegisteredEvent;
+import com.example.kiwi_backend.wallet.application.service.SignupBonusService;
 import com.example.kiwi_backend.wallet.application.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 가입하면 지갑을 만든다.
+ * 가입하면 지갑을 만들고, 이벤트 기간이면 가입 축하 보석을 준다.
  *
  * @TransactionalEventListener가 아니라 @EventListener를 쓰는 이유:
  * 가입 트랜잭션 안에서 바로 실행되어야, 지갑 생성이 실패하면 가입도 함께 취소된다.
@@ -18,9 +19,11 @@ import org.springframework.stereotype.Component;
 public class MemberRegisteredListener {
 
     private final WalletService walletService;
+    private final SignupBonusService signupBonusService;
 
     @EventListener
     public void onMemberRegistered(MemberRegisteredEvent event) {
         walletService.createWallet(event.memberId());
+        signupBonusService.grantIfEligible(event.memberId());
     }
 }

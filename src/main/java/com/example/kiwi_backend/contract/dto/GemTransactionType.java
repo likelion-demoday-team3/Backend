@@ -19,6 +19,7 @@ public enum GemTransactionType {
     GEM_PURCHASE(true, Reference.PAYMENT),         // 보석 구매
     PURCHASE_REFUND(false, Reference.PAYMENT),     // 구매 환불
     ADMIN_GRANT(true, Reference.ADMIN),            // 운영자 지급
+    SIGNUP_BONUS(true, Reference.ADMIN),           // 이벤트 기간 가입 축하 보석 (memo에 사유)
     ADMIN_DEDUCT(false, Reference.ADMIN);          // 운영자 회수
 
     public enum Reference {

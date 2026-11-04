@@ -16,6 +16,9 @@ spring:
   mail:
     host: localhost
 app:
+  # 테스트에서는 가입 보너스를 끈다 (지갑 잔액을 확인하는 기존 테스트가 영향받지 않게)
+  signup-bonus:
+    until: ""
   session:
     call-test:
       enabled: true
