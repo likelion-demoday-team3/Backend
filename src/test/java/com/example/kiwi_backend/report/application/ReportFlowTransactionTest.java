@@ -52,6 +52,8 @@ class ReportFlowTransactionTest {
 
     private Long sessionId;
     private Long upcomingSessionId;
+    private Long halfRefundSessionId;
+    private Long noRefundSessionId;
     private Long reporter;
     private Long reported;
     private Long stranger;
@@ -81,15 +83,22 @@ class ReportFlowTransactionTest {
         round.start(now.minusSeconds(60));
         rooms.saveAndFlush(LiveRoom.create(rounds.saveAndFlush(round), 1, reporter, reported));
 
-        // reported가 참가비 12개를 내고 미리 신청해 둔, 아직 시작 전인 세션
-        var upcoming = DatingSession.create(now.plusSeconds(86_400), 3, 180, 120, 300, 12, 2, now);
-        upcoming.openRecruiting(now);
-        upcomingSessionId = sessions.saveAndFlush(upcoming).getId();
+        // reported가 참가비 12개씩 내고 미리 신청해 둔, 아직 시작 전인 세션 셋 (시작까지 25시간·18시간·6시간)
         wallet.createWallet(reported);
-        wallet.apply(GemCommand.adminGrant(reported, 12, "test", UUID.randomUUID().toString()));
+        wallet.apply(GemCommand.adminGrant(reported, 36, "test", UUID.randomUUID().toString()));
+        upcomingSessionId = upcomingApplication(25);
+        halfRefundSessionId = upcomingApplication(18);
+        noRefundSessionId = upcomingApplication(6);
+    }
+
+    private Long upcomingApplication(int hoursBeforeStart) {
+        var upcoming = DatingSession.create(now.plusSeconds(hoursBeforeStart * 3_600L), 3, 180, 120, 300, 12, 2, now);
+        upcoming.openRecruiting(now);
+        Long id = sessions.saveAndFlush(upcoming).getId();
         Instant appliedAt = now.minusSeconds(10);
-        participants.saveAndFlush(SessionParticipant.apply(upcomingSessionId, reported, Gender.FEMALE, "upcoming", appliedAt));
-        wallet.apply(GemCommand.entryFee(reported, upcomingSessionId, 12, appliedAt));
+        participants.saveAndFlush(SessionParticipant.apply(id, reported, Gender.FEMALE, "upcoming-" + id, appliedAt));
+        wallet.apply(GemCommand.entryFee(reported, id, 12, appliedAt));
+        return id;
     }
 
     @Test
@@ -125,13 +134,17 @@ class ReportFlowTransactionTest {
 
         var result = adminReportService.suspend(reported, admin);
 
-        assertThat(result.cancelledApplications()).isEqualTo(1);
+        assertThat(result.cancelledApplications()).isEqualTo(3);
         assertThat(result.resolvedReports()).isEqualTo(1);
         assertThat(members.findById(reported).orElseThrow().getStatus()).isEqualTo(MemberStatus.SUSPENDED);
-        // 시작 전 세션은 취소하고 참가비를 전액 돌려준다
-        assertThat(participants.findBySessionIdAndMemberId(upcomingSessionId, reported).orElseThrow().getStatus())
-                .isEqualTo(ParticipantStatus.CANCELLED);
-        assertThat(wallet.getBalance(reported).gemBalance()).isEqualTo(12);
+        // 시작 전 세션은 모두 취소하고, 참가비는 본인 취소와 같은 규정으로 돌려준다
+        // 25시간 전 100%(12) + 18시간 전 50%(6) + 6시간 전 0% = 18
+        for (Long id : new Long[]{upcomingSessionId, halfRefundSessionId, noRefundSessionId}) {
+            assertThat(participants.findBySessionIdAndMemberId(id, reported).orElseThrow().getStatus())
+                    .isEqualTo(ParticipantStatus.CANCELLED);
+        }
+        assertThat(result.refundedGem()).isEqualTo(18);
+        assertThat(wallet.getBalance(reported).gemBalance()).isEqualTo(18);
         // 이미 진행 중인 세션 참가는 건드리지 않는다
         assertThat(participants.findBySessionIdAndMemberId(sessionId, reported).orElseThrow().getStatus())
                 .isEqualTo(ParticipantStatus.ATTENDED);
@@ -148,7 +161,7 @@ class ReportFlowTransactionTest {
         // 정지 알림
         assertThat(notifications.list(reported, 0, 20).items()).anySatisfy(item -> {
             assertThat(item.type()).isEqualTo(NotificationType.ACCOUNT_SUSPENDED);
-            assertThat(item.body()).contains("1개는 취소하고 참가비를 모두 돌려드렸어요");
+            assertThat(item.body()).contains("세션 3개는 취소됐어요").contains("보석 18개를 돌려드렸어요");
         });
 
         // 세션 신청만 막는다: 로그인은 되고, 새 신청은 거절된다

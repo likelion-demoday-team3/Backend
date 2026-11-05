@@ -82,7 +82,8 @@ public class AdminReportService {
     }
 
     /**
-     * 이용 정지. 새 세션 신청을 막고, 아직 시작하지 않은 신청은 취소·전액 환불한다.
+     * 이용 정지. 새 세션 신청을 막고, 아직 시작하지 않은 신청은 취소한다
+     * (참가비는 본인 취소와 같은 환불 규정: 24시간 전 100%, 12시간 전 50%, 그 이후 0%).
      * 이 회원에 대한 확인 전 신고는 모두 처리 완료(ACTIONED)로 바꾼다.
      */
     @Transactional
@@ -91,21 +92,29 @@ public class AdminReportService {
             throw new IllegalStateException("자기 자신은 정지할 수 없습니다");
         }
         memberAccounts.suspend(memberId);
-        int cancelled = sessionSuspension.cancelUpcomingApplications(memberId);
+        SessionSuspensionCommand.Result cancellation = sessionSuspension.cancelUpcomingApplications(memberId);
         Instant now = clock.instant();
         List<Report> pending = reports.findAllByReportedMemberIdAndStatus(memberId, ReportStatus.PENDING);
         pending.forEach(report -> report.markActioned(adminId, now));
 
-        String body = cancelled > 0
-                ? "신고가 확인되어 새 세션 신청이 제한됐어요. 신청해 둔 세션 " + cancelled
-                        + "개는 취소하고 참가비를 모두 돌려드렸어요."
-                : "신고가 확인되어 새 세션 신청이 제한됐어요.";
+        String body = suspensionMessage(cancellation);
         events.publishEvent(new NotificationEvent(memberId, NotificationType.ACCOUNT_SUSPENDED,
                 "이용이 제한됐어요", body, null, null,
                 "ACCOUNT_SUSPENDED:m" + memberId + ":" + now.toEpochMilli()));
         log.info("이용 정지 memberId={} adminId={} cancelledApplications={} resolvedReports={}",
-                memberId, adminId, cancelled, pending.size());
-        return new SuspendResult(memberId, cancelled, pending.size());
+                memberId, adminId, cancellation.cancelled(), pending.size());
+        return new SuspendResult(memberId, cancellation.cancelled(), cancellation.refundedGem(), pending.size());
+    }
+
+    private static String suspensionMessage(SessionSuspensionCommand.Result cancellation) {
+        String message = "신고가 확인되어 새 세션 신청이 제한됐어요.";
+        if (cancellation.cancelled() == 0) {
+            return message;
+        }
+        message += " 신청해 둔 세션 " + cancellation.cancelled() + "개는 취소됐어요.";
+        return cancellation.refundedGem() > 0
+                ? message + " 환불 규정에 따라 보석 " + cancellation.refundedGem() + "개를 돌려드렸어요."
+                : message + " 시작 12시간 전이 지나 환불되는 참가비는 없어요.";
     }
 
     /** 이용 정지 해제 */
@@ -164,5 +173,5 @@ public class AdminReportService {
                              Person reported, long reportedTotalCount, ReportReason reason, String reasonLabel,
                              ReportStatus status, Instant createdAt, Instant resolvedAt) { }
 
-    public record SuspendResult(Long memberId, int cancelledApplications, int resolvedReports) { }
+    public record SuspendResult(Long memberId, int cancelledApplications, int refundedGem, int resolvedReports) { }
 }
