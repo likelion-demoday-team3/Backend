@@ -2,6 +2,7 @@ package com.example.kiwi_backend.member.application;
 
 import com.example.kiwi_backend.contract.dto.MemberCredential;
 import com.example.kiwi_backend.contract.query.MemberCredentialQuery;
+import com.example.kiwi_backend.member.domain.enumerated.MemberStatus;
 import com.example.kiwi_backend.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ public class MemberCredentialQueryImpl implements MemberCredentialQuery {
                         member.getId(),
                         member.getPasswordHash(),
                         member.getRole().name(),
-                        member.isActive()
+                        member.getStatus() != MemberStatus.WITHDRAWN
                 ));
     }
 }

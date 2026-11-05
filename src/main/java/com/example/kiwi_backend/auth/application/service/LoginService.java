@@ -41,7 +41,7 @@ public class LoginService {
                 .filter(c -> passwordMatches)
                 .orElseThrow(() -> new AuthenticationFailedException(LOGIN_FAILED_MESSAGE));
 
-        if (!credential.active()) {
+        if (!credential.loginAllowed()) {
             throw new AuthenticationFailedException("이용할 수 없는 계정입니다");
         }
 

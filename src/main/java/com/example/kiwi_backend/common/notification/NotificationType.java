@@ -28,5 +28,13 @@ public enum NotificationType {
     CONTACT_REQUEST_ACCEPTED,
     CONTACT_REQUEST_REJECTED,
     /** 상대가 직접 연락처를 보냄 (요청 수락·자동 매칭으로 공유된 건 다른 알림이 대신한다) */
-    CONTACT_RECEIVED
+    CONTACT_RECEIVED,
+
+    // ===== 신고·이용 제한 =====
+    /** (운영자에게) 새 신고가 접수됨 */
+    REPORT_SUBMITTED,
+    /** 신고 확인 후 이용 정지됨 (새 세션 신청 불가, 예정 세션은 취소·환불) */
+    ACCOUNT_SUSPENDED,
+    /** 이용 정지가 풀림 */
+    ACCOUNT_REACTIVATED
 }
