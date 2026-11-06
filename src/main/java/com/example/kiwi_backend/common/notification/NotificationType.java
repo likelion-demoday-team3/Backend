@@ -33,6 +33,8 @@ public enum NotificationType {
     // ===== 신고·이용 제한 =====
     /** (운영자에게) 새 신고가 접수됨 */
     REPORT_SUBMITTED,
+    /** (운영자에게) 새 오류 제보가 들어오거나 처음 보는 오류가 자동 수집됨 */
+    ERROR_REPORTED,
     /** 신고 확인 후 이용 정지됨 (새 세션 신청 불가, 예정 세션은 취소·환불) */
     ACCOUNT_SUSPENDED,
     /** 이용 정지가 풀림 */
