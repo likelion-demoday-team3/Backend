@@ -36,12 +36,14 @@ public class SessionReadService {
     private final Clock clock;
 
     /** 아직 시작 전이고 모집 중이거나 진행 확정된 세션 */
+    /** memberId가 null이면 로그인하지 않은 방문자. 통화 테스트 세션은 참가자 본인에게만 보인다 */
     public List<SessionSummaryResponse> listUpcoming(Long memberId) {
         List<DatingSession> sessions = sessionRepository
                 .findAllByStatusInAndStartTimeAfterOrderByStartTimeAsc(VISIBLE_STATUSES, clock.instant());
-        Set<Long> mySessionIds = participantRepository.findAllByMemberIdOrderByAppliedAtDesc(memberId).stream()
-                .map(SessionParticipant::getSessionId)
-                .collect(Collectors.toSet());
+        Set<Long> mySessionIds = memberId == null ? Set.of()
+                : participantRepository.findAllByMemberIdOrderByAppliedAtDesc(memberId).stream()
+                        .map(SessionParticipant::getSessionId)
+                        .collect(Collectors.toSet());
         sessions = sessions.stream()
                 .filter(session -> !session.isCallTest() || mySessionIds.contains(session.getId()))
                 .toList();

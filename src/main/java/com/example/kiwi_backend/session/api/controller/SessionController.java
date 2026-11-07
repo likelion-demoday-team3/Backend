@@ -22,10 +22,10 @@ public class SessionController {
     private final SessionReadService sessionReadService;
     private final SessionApplicationService sessionApplicationService;
 
-    /** 신청 가능한 세션 목록 */
+    /** 신청 가능한 세션 목록. 로그인하지 않아도 볼 수 있다 */
     @GetMapping
     public ApiResponse<List<SessionSummaryResponse>> list(@AuthenticationPrincipal AuthUser authUser) {
-        return ApiResponse.ok(sessionReadService.listUpcoming(authUser.memberId()));
+        return ApiResponse.ok(sessionReadService.listUpcoming(authUser == null ? null : authUser.memberId()));
     }
 
     /**
