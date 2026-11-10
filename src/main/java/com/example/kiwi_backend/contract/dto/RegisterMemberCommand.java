@@ -16,6 +16,8 @@ public record RegisterMemberCommand(
         LocalDate birthDate,
         String phoneNumber,
         String instagramId,
-        Instant emailVerifiedAt
+        Instant emailVerifiedAt,
+        /** 학교 지역 (시·도). 프로필 카드에 보인다. 모르면 null */
+        String region
 ) {
 }

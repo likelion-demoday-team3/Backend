@@ -1,0 +1,192 @@
+# 가입할 수 있는 학교 메일 도메인 → 학교 이름, 지역 (둘 다 프로필 카드에 그대로 보인다)
+# 형식: 도메인,학교 이름,지역
+# - 전국 4년제 대학 (일반대학·교육대학·과학기술원). 전문대·사이버대·대학원대학은 넣지 않는다
+# - 하위 도메인도 같은 학교로 본다 (예: g.skku.edu → 성균관대학교, mail.hongik.ac.kr → 홍익대학교)
+# - 지역은 시·도 (서울 경기 인천 강원 대전 세종 충북 충남 광주 전북 전남 대구 경북 부산 울산 경남 제주).
+#   캠퍼스가 여러 곳인데 메일 도메인이 같으면 본교 지역으로 둔다
+# - 한 학교가 도메인을 여러 개 쓰면 줄을 여러 개 둔다. 같은 도메인을 두 번 쓰면 서버가 뜨지 않는다
+# - 학교를 추가하려면 한 줄을 넣고 재배포한다
+#
+# 서울
+snu.ac.kr,서울대학교,서울
+yonsei.ac.kr,연세대학교,서울
+korea.ac.kr,고려대학교,서울
+sogang.ac.kr,서강대학교,서울
+skku.edu,성균관대학교,서울
+hanyang.ac.kr,한양대학교,서울
+cau.ac.kr,중앙대학교,서울
+khu.ac.kr,경희대학교,서울
+hufs.ac.kr,한국외국어대학교,서울
+uos.ac.kr,서울시립대학교,서울
+ewha.ac.kr,이화여자대학교,서울
+ewhain.net,이화여자대학교,서울
+sookmyung.ac.kr,숙명여자대학교,서울
+konkuk.ac.kr,건국대학교,서울
+dongguk.edu,동국대학교,서울
+hongik.ac.kr,홍익대학교,서울
+kookmin.ac.kr,국민대학교,서울
+ssu.ac.kr,숭실대학교,서울
+soongsil.ac.kr,숭실대학교,서울
+sejong.ac.kr,세종대학교,서울
+kw.ac.kr,광운대학교,서울
+mju.ac.kr,명지대학교,서울
+smu.ac.kr,상명대학교,서울
+seoultech.ac.kr,서울과학기술대학교,서울
+swu.ac.kr,서울여자대학교,서울
+sungshin.ac.kr,성신여자대학교,서울
+dongduk.ac.kr,동덕여자대학교,서울
+duksung.ac.kr,덕성여자대학교,서울
+hansung.ac.kr,한성대학교,서울
+skuniv.ac.kr,서경대학교,서울
+syu.ac.kr,삼육대학교,서울
+chongshin.ac.kr,총신대학교,서울
+knsu.ac.kr,한국체육대학교,서울
+snue.ac.kr,서울교육대학교,서울
+karts.ac.kr,한국예술종합학교,서울
+chugye.ac.kr,추계예술대학교,서울
+skhu.ac.kr,성공회대학교,서울
+mtu.ac.kr,감리교신학대학교,서울
+puts.ac.kr,장로회신학대학교,서울
+bible.ac.kr,한국성서대학교,서울
+#
+# 인천·경기
+inha.ac.kr,인하대학교,인천
+inha.edu,인하대학교,인천
+inu.ac.kr,인천대학교,인천
+ginue.ac.kr,경인교육대학교,인천
+catholic.ac.kr,가톨릭대학교,경기
+ajou.ac.kr,아주대학교,경기
+kyonggi.ac.kr,경기대학교,경기
+gachon.ac.kr,가천대학교,경기
+dankook.ac.kr,단국대학교,경기
+kau.ac.kr,한국항공대학교,경기
+tukorea.ac.kr,한국공학대학교,경기
+kpu.ac.kr,한국공학대학교,경기
+suwon.ac.kr,수원대학교,경기
+hs.ac.kr,한신대학교,경기
+kangnam.ac.kr,강남대학교,경기
+yongin.ac.kr,용인대학교,경기
+uhs.ac.kr,협성대학교,경기
+ptu.ac.kr,평택대학교,경기
+hknu.ac.kr,한경국립대학교,경기
+daejin.ac.kr,대진대학교,경기
+anyang.ac.kr,안양대학교,경기
+sungkyul.ac.kr,성결대학교,경기
+shinhan.ac.kr,신한대학교,경기
+eulji.ac.kr,을지대학교,경기
+cha.ac.kr,차의과학대학교,경기
+stu.ac.kr,서울신학대학교,경기
+#
+# 강원
+kangwon.ac.kr,강원대학교,강원
+hallym.ac.kr,한림대학교,강원
+gwnu.ac.kr,강릉원주대학교,강원
+sangji.ac.kr,상지대학교,강원
+cku.ac.kr,가톨릭관동대학교,강원
+halla.ac.kr,한라대학교,강원
+kduniv.ac.kr,경동대학교,강원
+cnue.ac.kr,춘천교육대학교,강원
+#
+# 대전·충청
+kaist.ac.kr,KAIST,대전
+cnu.ac.kr,충남대학교,대전
+hanbat.ac.kr,한밭대학교,대전
+hannam.ac.kr,한남대학교,대전
+pcu.ac.kr,배재대학교,대전
+mokwon.ac.kr,목원대학교,대전
+dju.ac.kr,대전대학교,대전
+wsu.ac.kr,우송대학교,대전
+chungbuk.ac.kr,충북대학교,충북
+cbnu.ac.kr,충북대학교,충북
+semyung.ac.kr,세명대학교,충북
+cju.ac.kr,청주대학교,충북
+seowon.ac.kr,서원대학교,충북
+ut.ac.kr,한국교통대학교,충북
+kku.ac.kr,건국대학교 글로컬캠퍼스,충북
+jwu.ac.kr,중원대학교,충북
+u1.ac.kr,유원대학교,충북
+kdu.ac.kr,극동대학교,충북
+knue.ac.kr,한국교원대학교,충북
+cje.ac.kr,청주교육대학교,충북
+konyang.ac.kr,건양대학교,충남
+hoseo.ac.kr,호서대학교,충남
+hoseo.edu,호서대학교,충남
+sch.ac.kr,순천향대학교,충남
+bu.ac.kr,백석대학교,충남
+nsu.ac.kr,남서울대학교,충남
+sunmoon.ac.kr,선문대학교,충남
+kongju.ac.kr,공주대학교,충남
+koreatech.ac.kr,한국기술교육대학교,충남
+kornu.ac.kr,나사렛대학교,충남
+chungwoon.ac.kr,청운대학교,충남
+hanseo.ac.kr,한서대학교,충남
+joongbu.ac.kr,중부대학교,충남
+gjue.ac.kr,공주교육대학교,충남
+#
+# 광주·전라
+jnu.ac.kr,전남대학교,광주
+chosun.ac.kr,조선대학교,광주
+gist.ac.kr,GIST,광주
+gwangju.ac.kr,광주대학교,광주
+honam.ac.kr,호남대학교,광주
+kwu.ac.kr,광주여자대학교,광주
+nambu.ac.kr,남부대학교,광주
+gnue.ac.kr,광주교육대학교,광주
+kentech.ac.kr,한국에너지공과대학교,전남
+dsu.ac.kr,동신대학교,전남
+mokpo.ac.kr,목포대학교,전남
+scnu.ac.kr,순천대학교,전남
+mmu.ac.kr,목포해양대학교,전남
+sehan.ac.kr,세한대학교,전남
+jbnu.ac.kr,전북대학교,전북
+wku.ac.kr,원광대학교,전북
+jj.ac.kr,전주대학교,전북
+woosuk.ac.kr,우석대학교,전북
+kunsan.ac.kr,군산대학교,전북
+howon.ac.kr,호원대학교,전북
+jnue.ac.kr,전주교육대학교,전북
+#
+# 대구·경북
+knu.ac.kr,경북대학교,대구
+kmu.ac.kr,계명대학교,대구
+dgist.ac.kr,DGIST,대구
+dnue.ac.kr,대구교육대학교,대구
+yu.ac.kr,영남대학교,경북
+daegu.ac.kr,대구대학교,경북
+cu.ac.kr,대구가톨릭대학교,경북
+dhu.ac.kr,대구한의대학교,경북
+postech.ac.kr,POSTECH,경북
+handong.edu,한동대학교,경북
+kumoh.ac.kr,금오공과대학교,경북
+dongguk.ac.kr,동국대학교 WISE캠퍼스,경북
+uu.ac.kr,위덕대학교,경북
+gimcheon.ac.kr,김천대학교,경북
+dyu.ac.kr,동양대학교,경북
+ikw.ac.kr,경운대학교,경북
+#
+# 부산·울산·경남
+pusan.ac.kr,부산대학교,부산
+pknu.ac.kr,부경대학교,부산
+kmou.ac.kr,한국해양대학교,부산
+donga.ac.kr,동아대학교,부산
+deu.ac.kr,동의대학교,부산
+ks.ac.kr,경성대학교,부산
+silla.ac.kr,신라대학교,부산
+bufs.ac.kr,부산외국어대학교,부산
+dongseo.ac.kr,동서대학교,부산
+tu.ac.kr,동명대학교,부산
+kosin.ac.kr,고신대학교,부산
+cup.ac.kr,부산가톨릭대학교,부산
+bnue.ac.kr,부산교육대학교,부산
+ulsan.ac.kr,울산대학교,울산
+unist.ac.kr,UNIST,울산
+inje.ac.kr,인제대학교,경남
+gnu.ac.kr,경상국립대학교,경남
+changwon.ac.kr,창원대학교,경남
+kyungnam.ac.kr,경남대학교,경남
+ysu.ac.kr,영산대학교,경남
+cs.ac.kr,창신대학교,경남
+cue.ac.kr,진주교육대학교,경남
+#
+# 제주
+jejunu.ac.kr,제주대학교,제주

@@ -44,6 +44,7 @@ public class ProfileQueryServiceImpl implements ProfileQueryService {
         return new PartnerProfileCard(
                 memberId,
                 profile.getUniversity(),
+                profile.getRegion(),
                 profile.getIdealType(),
                 profile.getDatingStyle(),
                 profile.getContactStyle(),

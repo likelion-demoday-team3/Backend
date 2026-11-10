@@ -88,7 +88,7 @@ class LiveJoinServiceTest {
                 new LiveParticipant(201L, Gender.FEMALE, "배고픈 판다")
         ));
         PartnerProfileCard partnerCard = new PartnerProfileCard(
-                201L, "서강대학교", "곰상", "전시", "전화", "천천히", List.of("러닝"));
+                201L, "서강대학교", "서울", "곰상", "전시", "전화", "천천히", List.of("러닝"));
         when(profileQueryService.getCards(List.of(201L))).thenReturn(Map.of(201L, partnerCard));
 
         LiveJoinResponse response = service.join(10L, 101L);

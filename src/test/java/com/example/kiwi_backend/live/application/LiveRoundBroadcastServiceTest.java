@@ -291,6 +291,6 @@ class LiveRoundBroadcastServiceTest {
     }
 
     private PartnerProfileCard card(Long memberId) {
-        return new PartnerProfileCard(memberId, "학교", "이상형", "데이트 스타일", "연락 스타일", "연애 성향", List.of("영화"));
+        return new PartnerProfileCard(memberId, "학교", "서울", "이상형", "데이트 스타일", "연락 스타일", "연애 성향", List.of("영화"));
     }
 }

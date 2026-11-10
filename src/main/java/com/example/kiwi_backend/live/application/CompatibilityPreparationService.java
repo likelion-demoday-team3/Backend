@@ -183,6 +183,7 @@ public class CompatibilityPreparationService {
     private Map<String, Object> profileFields(PartnerProfileCard card) {
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("university", card.university());
+        fields.put("region", card.region());
         fields.put("idealType", card.idealType());
         fields.put("datingStyle", card.datingStyle());
         fields.put("contactStyle", card.contactStyle());

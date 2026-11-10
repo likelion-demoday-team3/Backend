@@ -7,6 +7,8 @@ import java.util.List;
 /** 본인 프로필 카드 (수정 화면용) */
 public record MyProfileResponse(
         String university,
+        /** 학교 지역 (시·도). 모르면 null */
+        String region,
         String idealType,
         String datingStyle,
         String contactStyle,
@@ -16,6 +18,7 @@ public record MyProfileResponse(
     public static MyProfileResponse from(Profile profile) {
         return new MyProfileResponse(
                 profile.getUniversity(),
+                profile.getRegion(),
                 profile.getIdealType(),
                 profile.getDatingStyle(),
                 profile.getContactStyle(),

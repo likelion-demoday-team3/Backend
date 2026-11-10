@@ -48,8 +48,8 @@ class CompatibilityPreparationServiceTest {
         when(compatRepository.findAllBySessionId(7L)).thenReturn(List.of());
         when(profiles.getCards(argThat(ids -> ids.containsAll(List.of(11L, 21L)))))
                 .thenReturn(Map.of(
-                        11L, new PartnerProfileCard(11L, "연세대학교", "다정한 사람", "산책", "자주 연락", "표현형", List.of("영화")),
-                        21L, new PartnerProfileCard(21L, "서강대학교", "유머 있는 사람", "전시", "필요할 때", "대화형", List.of("영화"))));
+                        11L, new PartnerProfileCard(11L, "연세대학교", "서울", "다정한 사람", "산책", "자주 연락", "표현형", List.of("영화")),
+                        21L, new PartnerProfileCard(21L, "서강대학교", "서울", "유머 있는 사람", "전시", "필요할 때", "대화형", List.of("영화"))));
         server.expect(requestTo("https://platform.liner.com/api/v1/chat/completions"))
                 .andExpect(header("Authorization", "Bearer liner-test-key"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("idealType")))

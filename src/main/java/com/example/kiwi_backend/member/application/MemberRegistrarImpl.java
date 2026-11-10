@@ -50,7 +50,7 @@ public class MemberRegistrarImpl implements MemberRegistrar {
                 LocalDate.now(KOREA)
         );
         memberRepository.save(member);
-        profileRepository.save(Profile.create(member));
+        profileRepository.save(Profile.create(member, command.region()));
 
         eventPublisher.publishEvent(new MemberRegisteredEvent(member.getId()));
         return member.getId();

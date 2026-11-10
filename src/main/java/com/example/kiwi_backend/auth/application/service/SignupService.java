@@ -36,7 +36,7 @@ public class SignupService {
     @Transactional
     public TokenResponse signup(SignupRequest request) {
         String email = emailFromSignupToken(request.signupToken());
-        String university = universityDomainPolicy.universityOf(email);
+        UniversityDomainPolicy.School school = universityDomainPolicy.schoolOf(email);
 
         Instant verifiedAt = verificationRepository.findTopByEmailOrderByCreatedAtDesc(email)
                 .map(EmailVerification::getVerifiedAt)
@@ -46,12 +46,13 @@ public class SignupService {
                 email,
                 request.name(),
                 passwordEncoder.encode(request.password()),
-                university,
+                school.name(),
                 request.gender(),
                 request.birthDate(),
                 request.phoneNumber(),
                 request.instagramId(),
-                verifiedAt
+                verifiedAt,
+                school.region()
         ));
 
         return TokenResponse.bearer(jwtProvider.createAccessToken(memberId, NEW_MEMBER_ROLE));

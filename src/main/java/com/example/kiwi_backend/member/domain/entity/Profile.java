@@ -37,6 +37,10 @@ public class Profile extends BaseTimeEntity {
     @Column(nullable = false, updatable = false)
     private String university;
 
+    /** 카드 표시용 학교 지역 (시·도, 예: 서울, 부산). 가입 때 학교 메일 도메인으로 정하고 이후 변경 불가 */
+    @Column(length = 20, updatable = false)
+    private String region;
+
     /** 카드·궁합용 이상형 */
     @Column(columnDefinition = "text")
     private String idealType;
@@ -61,9 +65,15 @@ public class Profile extends BaseTimeEntity {
     // ===== 생성 =====
 
     public static Profile create(Member member) {
+        return create(member, null);
+    }
+
+    /** region: 학교 지역 (가입 때 학교 메일 도메인으로 정한다). 모르면 null */
+    public static Profile create(Member member, String region) {
         Profile profile = new Profile();
         profile.member = Objects.requireNonNull(member);
         profile.university = member.getUniversity();
+        profile.region = region == null || region.isBlank() ? null : region.strip();
         return profile;
     }
 
