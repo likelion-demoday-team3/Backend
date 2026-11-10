@@ -37,6 +37,8 @@ public class ErrorReportService {
     /** 운영자 알림을 눌렀을 때 이동할 프론트 경로 */
     public static final String ADMIN_ERROR_REPORTS_LINK = "/admin/error-reports";
     static final int MAX_PER_HOUR = 20;
+    /** 비회원 제보는 누구나 보낼 수 있으니 전체 합계로 막는다 (운영자 알림함이 넘치지 않게) */
+    static final int GUEST_MAX_PER_HOUR = 30;
 
     private final ErrorReportRepository errorReports;
     private final MemberQueryService members;
@@ -69,9 +71,37 @@ public class ErrorReportService {
             throw new IllegalStateException("제보가 너무 많아요. 잠시 후 다시 보내주세요");
         }
 
-        ErrorReport report = errorReports.saveAndFlush(ErrorReport.create(submission.kind(), memberId,
-                submission.message(), submission.pageUrl(), submission.userAgent(), submission.detail(),
-                fingerprint, now));
+        return save(memberId, submission.kind(), submission.message(), submission.pageUrl(),
+                submission.userAgent(), submission.detail(), fingerprint, now);
+    }
+
+    /**
+     * 로그인하지 않은 사람의 직접 제보 (예: 학교 메일로 가입이 안 될 때).
+     * 답변 받을 이메일을 제보 내용에 함께 남긴다. 비회원 제보 전체를 1시간에 GUEST_MAX_PER_HOUR개로 막는다.
+     */
+    @Transactional
+    public Receipt submitAsGuest(GuestSubmission submission) {
+        if (submission == null || submission.contactEmail() == null || submission.contactEmail().isBlank()) {
+            throw new IllegalArgumentException("답변 받을 이메일이 필요합니다");
+        }
+        if (submission.message() == null || submission.message().isBlank()) {
+            throw new IllegalArgumentException("어떤 문제가 있었는지 적어주세요");
+        }
+        Instant now = clock.instant();
+        if (errorReports.countByMemberIdIsNullAndCreatedAtAfter(now.minus(Duration.ofHours(1))) >= GUEST_MAX_PER_HOUR) {
+            throw new IllegalStateException("지금은 제보가 많아요. 잠시 후 다시 보내주세요");
+        }
+        String contact = submission.contactEmail().strip();
+        String detail = "답변 받을 이메일: " + contact
+                + (submission.detail() == null || submission.detail().isBlank() ? "" : "\n" + submission.detail().strip());
+        return save(null, ErrorReportKind.USER, "[비회원] " + submission.message().strip(), submission.pageUrl(),
+                submission.userAgent(), detail, null, now);
+    }
+
+    private Receipt save(Long memberId, ErrorReportKind kind, String message, String pageUrl, String userAgent,
+                         String detail, String fingerprint, Instant now) {
+        ErrorReport report = errorReports.saveAndFlush(ErrorReport.create(kind, memberId,
+                message, pageUrl, userAgent, detail, fingerprint, now));
         notifyAdmins(report);
         log.info("오류 제보 접수 id={} kind={} member={} page={}",
                 report.getId(), report.getKind(), memberId, report.getPageUrl());
@@ -127,6 +157,8 @@ public class ErrorReportService {
     }
 
     public record Submission(ErrorReportKind kind, String message, String pageUrl, String userAgent, String detail) { }
+
+    public record GuestSubmission(String contactEmail, String message, String pageUrl, String userAgent, String detail) { }
 
     /**
      * id: 저장(또는 묶인) 제보 id. 자동 수집이 너무 많아 버려졌으면 null.

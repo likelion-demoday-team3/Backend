@@ -148,6 +148,41 @@ class ErrorReportFlowTransactionTest {
                 .andExpect(jsonPath("$.data[0].kind").value("USER"));
     }
 
+    @Test
+    void guestCanReportWithoutLoginAndLeavesContactEmail() throws Exception {
+        String school = "가입안됨-" + UUID.randomUUID();
+        mockMvc.perform(post("/api/error-reports/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"contactEmail":"me@gmail.com","message":"%s 학교 메일로 가입이 안 돼요","pageUrl":"https://kiiwee.vercel.app/signup"}
+                                """.formatted(school)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").isNumber());
+
+        var view = adminErrorReports.list(ErrorReportStatus.OPEN, ErrorReportKind.USER).stream()
+                .filter(item -> item.message().contains(school)).findFirst().orElseThrow();
+        assertThat(view.message()).startsWith("[비회원] ");
+        assertThat(view.reporter()).isNull();
+        assertThat(view.detail()).contains("답변 받을 이메일: me@gmail.com");
+        assertThat(notifications.list(admin, 0, 50).items())
+                .anySatisfy(item -> assertThat(item.body()).contains(school.substring(0, 10)));
+
+        // 답변 받을 이메일이 없거나 형식이 틀리면 받지 않는다
+        mockMvc.perform(post("/api/error-reports/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"가입이 안 돼요\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/error-reports/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"contactEmail\":\"not-an-email\",\"message\":\"가입이 안 돼요\"}"))
+                .andExpect(status().isBadRequest());
+        // 일반 제보는 여전히 로그인이 필요하다
+        mockMvc.perform(post("/api/error-reports")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"USER\",\"message\":\"제보\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
     private static ErrorReportService.Submission auto(String message, String pageUrl) {
         return new ErrorReportService.Submission(ErrorReportKind.AUTO, message, pageUrl, "UA",
                 "at render (App.tsx:10)\nat other");

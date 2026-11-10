@@ -60,6 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         // 홈 화면 세션 목록은 로그인 전에도 볼 수 있다 (상세·신청·내 세션은 로그인 필요)
                         .requestMatchers(HttpMethod.GET, "/sessions").permitAll()
+                        // 가입이 안 되는 등 로그인 전에 생긴 문제를 제보한다 (비회원 제보는 1시간 합계로 제한)
+                        .requestMatchers(HttpMethod.POST, "/api/error-reports/guest").permitAll()
                         // 나이스페이가 브라우저로 form POST 하는 결제창 returnUrl. 로그인 토큰이 없어 서명으로 검증한다
                         .requestMatchers(HttpMethod.POST, NICEPAY_RETURN_PATH).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
