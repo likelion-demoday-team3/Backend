@@ -3,6 +3,7 @@ package com.example.kiwi_backend.auth.application.service;
 import com.example.kiwi_backend.auth.api.dto.SignupRequest;
 import com.example.kiwi_backend.auth.api.dto.TokenResponse;
 import com.example.kiwi_backend.auth.application.UniversityDomainPolicy;
+import com.example.kiwi_backend.common.terms.TermsVersion;
 import com.example.kiwi_backend.auth.domain.entity.EmailVerification;
 import com.example.kiwi_backend.auth.domain.repository.EmailVerificationRepository;
 import com.example.kiwi_backend.common.exception.AuthenticationFailedException;
@@ -52,7 +53,10 @@ public class SignupService {
                 request.phoneNumber(),
                 request.instagramId(),
                 verifiedAt,
-                school.region()
+                school.region(),
+                // 필수 동의 3개는 SignupRequest의 @AssertTrue가 이미 확인했다
+                Instant.now(),
+                TermsVersion.CURRENT
         ));
 
         return TokenResponse.bearer(jwtProvider.createAccessToken(memberId, NEW_MEMBER_ROLE));

@@ -49,6 +49,9 @@ public class MemberRegistrarImpl implements MemberRegistrar {
                 command.emailVerifiedAt(),
                 LocalDate.now(KOREA)
         );
+        if (command.termsAgreedAt() != null) {
+            member.agreeToTerms(command.termsVersion(), command.termsAgreedAt());
+        }
         memberRepository.save(member);
         profileRepository.save(Profile.create(member, command.region()));
 

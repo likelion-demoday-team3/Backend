@@ -18,6 +18,10 @@ public record RegisterMemberCommand(
         String instagramId,
         Instant emailVerifiedAt,
         /** 학교 지역 (시·도). 프로필 카드에 보인다. 모르면 null */
-        String region
+        String region,
+        /** 필수 약관(이용약관·개인정보 수집·이용·제3자 제공)에 동의한 시각. 모르면 null */
+        Instant termsAgreedAt,
+        /** 동의한 약관 버전 (약관 시행일, 예: 2026-10-31) */
+        String termsVersion
 ) {
 }

@@ -10,6 +10,7 @@ import com.example.kiwi_backend.member.api.dto.IdentityVerificationStartResponse
 import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
 import com.example.kiwi_backend.member.api.dto.PasswordChangeRequest;
 import com.example.kiwi_backend.member.api.dto.PhoneNumberRequest;
+import com.example.kiwi_backend.member.api.dto.TermsAgreementRequest;
 import com.example.kiwi_backend.member.application.MemberService;
 import com.example.kiwi_backend.member.application.PortOneIdentityVerificationService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -45,6 +46,14 @@ public class MemberController {
     @GetMapping
     public ApiResponse<MyInfoResponse> getMyInfo(@AuthenticationPrincipal AuthUser authUser) {
         return ApiResponse.ok(memberService.getMyInfo(authUser.memberId()));
+    }
+
+    /** 지금 약관에 동의 (약관이 바뀌었거나 동의 기능 이전에 가입한 회원). 내 정보의 termsAgreementRequired가 false가 된다 */
+    @PostMapping("/terms-agreement")
+    public ApiResponse<Void> agreeToTerms(@AuthenticationPrincipal AuthUser authUser,
+                                          @Valid @RequestBody TermsAgreementRequest request) {
+        memberService.agreeToCurrentTerms(authUser.memberId());
+        return ApiResponse.ok();
     }
 
     @PutMapping("/name")

@@ -2,12 +2,15 @@ package com.example.kiwi_backend.member.application;
 
 import com.example.kiwi_backend.member.api.dto.MyInfoResponse;
 import com.example.kiwi_backend.common.exception.NotFoundException;
+import com.example.kiwi_backend.common.terms.TermsVersion;
 import com.example.kiwi_backend.member.domain.entity.Member;
 import com.example.kiwi_backend.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 
 /**
  * 본인 계정 관리: 내 정보 조회, 연락처 수정·삭제, 비밀번호 변경, 탈퇴.
@@ -25,6 +28,11 @@ public class MemberService {
     @Transactional(readOnly = true)
     public MyInfoResponse getMyInfo(Long memberId) {
         return MyInfoResponse.from(findMember(memberId));
+    }
+
+    /** 지금 시행 중인 약관에 동의한 것으로 기록한다 (필수 동의 확인은 요청 검증이 한다) */
+    public void agreeToCurrentTerms(Long memberId) {
+        findMember(memberId).agreeToTerms(TermsVersion.CURRENT, Instant.now());
     }
 
     public void changeName(Long memberId, String name) {

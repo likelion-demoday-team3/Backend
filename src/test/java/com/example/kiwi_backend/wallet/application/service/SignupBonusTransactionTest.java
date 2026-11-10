@@ -37,7 +37,7 @@ class SignupBonusTransactionTest {
         String email = "bonus-" + UUID.randomUUID().toString().substring(0, 8) + "@yonsei.ac.kr";
         Long memberId = tx.execute(status -> memberRegistrar.register(new RegisterMemberCommand(
                 email, "가입보너스", "hash", "연세대학교", Gender.FEMALE, LocalDate.of(2003, 1, 1),
-                null, "bonus_test", Instant.now(), "서울")));
+                null, "bonus_test", Instant.now(), "서울", Instant.now(), "2026-10-31")));
         // 다시 불려도 한 번만 지급된다
         tx.executeWithoutResult(status -> signupBonus.grantIfEligible(memberId));
 

@@ -1,6 +1,7 @@
 package com.example.kiwi_backend.auth.api.dto;
 
 import com.example.kiwi_backend.contract.dto.Gender;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
@@ -19,6 +20,12 @@ public record SignupRequest(
         @NotNull Gender gender,
         @NotNull @Past LocalDate birthDate,
         String phoneNumber,
-        String instagramId
+        String instagramId,
+        /** [필수] 이용약관 동의 */
+        @AssertTrue(message = "이용약관에 동의해주세요") boolean agreeTerms,
+        /** [필수] 개인정보 수집·이용 동의 */
+        @AssertTrue(message = "개인정보 수집·이용에 동의해주세요") boolean agreePrivacy,
+        /** [필수] 매칭·연락처 교환·투표 결과 열람 시 다른 회원에게 개인정보 제공 동의 */
+        @AssertTrue(message = "개인정보 제3자 제공에 동의해주세요") boolean agreeThirdParty
 ) {
 }

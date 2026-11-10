@@ -89,6 +89,14 @@ public class Member extends BaseTimeEntity {
     @Column(name = "email_verified_at", nullable = false, updatable = false)
     private Instant emailVerifiedAt;
 
+    /** 필수 약관(이용약관·개인정보 수집·이용·제3자 제공)에 동의한 시각. 이 기능 이전 가입자는 null */
+    @Column(name = "terms_agreed_at")
+    private Instant termsAgreedAt;
+
+    /** 동의한 약관 버전 (약관 시행일, 예: 2026-10-31) */
+    @Column(name = "terms_version", length = 20)
+    private String termsVersion;
+
     /** 본인인증 완료 시각, 추후 사용 */
     @Column(name = "identity_verified_at")
     private Instant identityVerifiedAt;
@@ -186,6 +194,12 @@ public class Member extends BaseTimeEntity {
             throw new IllegalStateException("이미 본인인증이 완료된 회원입니다");
         }
         this.pendingPortoneIdentityVerificationId = requireText(verificationId, "본인인증 ID");
+    }
+
+    /** 필수 약관 동의를 기록한다 (약관이 바뀌어 다시 동의받을 때도 쓴다) */
+    public void agreeToTerms(String version, Instant agreedAt) {
+        this.termsVersion = requireText(version, "약관 버전");
+        this.termsAgreedAt = requireNonNull(agreedAt, "약관 동의 시각");
     }
 
     public void verifyIdentity(Instant verifiedAt, String verificationId) {

@@ -38,6 +38,6 @@ class ProfileRegionTest {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         return tx.execute(status -> memberRegistrar.register(new RegisterMemberCommand(
                 "region-" + unique + "@pusan.ac.kr", "지역", "hash", "부산대학교", Gender.MALE,
-                LocalDate.of(2003, 1, 1), null, "region_" + unique, Instant.now(), region)));
+                LocalDate.of(2003, 1, 1), null, "region_" + unique, Instant.now(), region, null, null)));
     }
 }
