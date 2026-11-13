@@ -145,6 +145,25 @@ class ContactTransactionTest {
     }
 
     @Test
+    void requestHistoryShowsBothSidesWithAliasesAndSessionTime() {
+        windows.closeResults(sessionId, sender);
+        service.request(sessionId, sender, target, ContactType.PHONE);
+
+        var sent = service.requestHistory(sender, 0, 20).items();
+        var received = service.requestHistory(target, 0, 20).items();
+        assertThat(sent).hasSize(1);
+        assertThat(received).hasSize(1);
+        var item = sent.getFirst();
+        assertThat(item.requesterAlias()).isEqualTo("alias-" + sender);
+        assertThat(item.targetAlias()).isEqualTo("alias-" + target);
+        assertThat(item.sessionStartTime()).isNotNull();
+        assertThat(item.status()).isEqualTo(ContactRequest.Status.PENDING);
+        assertThat(item.direction()).isEqualTo(ContactService.Direction.SENT);
+        assertThat(received.getFirst().direction()).isEqualTo(ContactService.Direction.RECEIVED);
+        assertThat(service.requestHistory(sender + 2, 0, 20).items()).isEmpty();
+    }
+
+    @Test
     void insufficientBalanceLeavesRequestPendingAndContactHidden() {
         windows.closeResults(sessionId, sender);
         var request = service.request(sessionId, sender, target, ContactType.PHONE);

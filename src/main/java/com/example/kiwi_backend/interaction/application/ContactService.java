@@ -172,7 +172,10 @@ public class ContactService {
     @Transactional(readOnly = true)
     public History<RequestView> requestHistory(Long memberId, int page, int size) {
         var result = requests.history(memberId, page(page, size));
-        return new History<>(result.map(this::requestView).getContent(), result.hasNext());
+        // 같은 세션 기록이 여러 건이어도 세션 정보는 한 번만 조회한다
+        Map<Long, SessionInfo> cache = new HashMap<>();
+        return new History<>(result.map(request -> requestView(request, cache,
+                request.getRequesterId().equals(memberId) ? Direction.SENT : Direction.RECEIVED)).getContent(), result.hasNext());
     }
 
     private PageRequest page(int page, int size) {
@@ -210,8 +213,15 @@ public class ContactService {
     }
 
     private RequestView requestView(ContactRequest request) {
+        return requestView(request, new HashMap<>(), null);
+    }
+
+    /** direction은 요청 기록을 조회할 때만 채운다 (조회한 회원이 보낸 요청이면 SENT, 받은 요청이면 RECEIVED) */
+    private RequestView requestView(ContactRequest request, Map<Long, SessionInfo> cache, Direction direction) {
+        var session = cache.computeIfAbsent(request.getSessionId(), this::sessionInfo);
         return new RequestView(request.getId(), request.getSessionId(), request.getRequesterId(), request.getTargetId(),
-                request.getContactType(), request.getStatus(), request.getChargedGem(), request.getCreatedAt(), request.getRespondedAt());
+                request.getContactType(), request.getStatus(), request.getChargedGem(), request.getCreatedAt(), request.getRespondedAt(),
+                session.startTime(), session.aliases().get(request.getRequesterId()), session.aliases().get(request.getTargetId()), direction);
     }
 
     public enum Direction { SENT, RECEIVED }
@@ -221,5 +231,7 @@ public class ContactService {
                             String contactValue, ContactShare.ShareType shareType, Instant createdAt,
                             Instant sessionStartTime, String senderAlias, String receiverAlias) { }
     public record RequestView(Long id, Long sessionId, Long requesterId, Long targetId, ContactType contactType,
-                              ContactRequest.Status status, int chargedGem, Instant createdAt, Instant respondedAt) { }
+                              ContactRequest.Status status, int chargedGem, Instant createdAt, Instant respondedAt,
+                              Instant sessionStartTime, String requesterAlias, String targetAlias,
+                              Direction direction) { }
 }
